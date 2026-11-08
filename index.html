@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="fr">
 <head>
-<title>Prototype Mer 2.1.0</title>
+<title>Prototype Mer 2.1.1</title>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -274,6 +274,23 @@ body.inmine .stats,body.inmine #help{display:none!important}body.inmine #toast{t
 }
 #merUpdate{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);transform:translateX(-50%);z-index:50;background:#f5e9ca;color:#3a2814;border:2px solid #7a4a2a;border-radius:12px;padding:12px 16px;font:700 14px system-ui;box-shadow:0 5px 25px #0008;max-width:90vw}
 #merUpdate button{margin-left:8px;padding:8px 10px;background:#7a4a2a;color:white;border:0;border-radius:8px;font:inherit}
+
+/* Interface meteo embarquee 2.1.1 */
+#weatherBtn{width:100%;max-width:104px;min-height:36px;font-size:12px;padding:6px 7px}
+#weatherPanel{position:fixed;inset:0;background:rgba(3,25,38,.65);display:grid;place-items:center;padding:18px;z-index:26}
+#weatherPanel[hidden]{display:none!important}
+.weatherCard{background:linear-gradient(#f5e9ca,#ead8ae);color:#3a2814;border:4px solid #7a4a2a;border-radius:16px;padding:16px;width:min(100%,350px);max-height:calc(100dvh - 36px);overflow:auto;box-shadow:0 12px 35px #0007;display:grid;gap:12px}
+.weatherCard header{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.weatherCard h2{font:700 20px Georgia,serif;margin:0}
+.weatherCard button{border:0;border-radius:10px;padding:9px 12px;background:#7a4a2a;color:#fff4dc;font-weight:800;font-size:14px}
+.weatherCompass{display:flex;align-items:center;gap:14px;background:#ead6a8;padding:12px;border-radius:12px}
+.weatherDial{position:relative;width:70px;height:70px;flex:0 0 70px;border-radius:50%;border:3px solid #8a6030;background:#f7edcf;display:grid;place-items:center;font:800 11px system-ui}
+.weatherDial:before{content:'N';position:absolute;top:3px}
+.weatherDial:after{content:'S';position:absolute;bottom:3px}
+#weatherNeedle{display:block;font-size:28px;color:#0e7890;transform:rotate(0rad)}
+.weatherDetails{font-size:14px;line-height:1.5}
+.weatherForecast{background:#fff5dc;border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.4}
+#weatherAlert{font-weight:800;color:#ab512b}
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800&display=swap">
 </head>
@@ -296,8 +313,18 @@ body.inmine .stats,body.inmine #help{display:none!important}body.inmine #toast{t
   </div>
   <div class="right">
     <button id="gear" type="button">Réglages</button>
+    <button id="weatherBtn" class="hudbtn" type="button" aria-controls="weatherPanel">☁ Météo</button>
     <button id="miniBtn" type="button" aria-label="Ouvrir la carte"><canvas id="miniCv" width="196" height="196"></canvas></button>
   </div>
+</div>
+<div id="weatherPanel" hidden>
+ <section class="weatherCard" role="dialog" aria-modal="true" aria-labelledby="weatherTitle">
+  <header><h2 id="weatherTitle">Journal météo</h2><button id="weatherClose" type="button">Fermer</button></header>
+  <div class="weatherCompass"><div class="weatherDial" aria-hidden="true"><span id="weatherNeedle">➤</span></div>
+   <div class="weatherDetails"><b id="weatherNow">Mer calme</b><div id="weatherWind">Vent faible</div><div id="weatherShelter">Au large</div></div></div>
+  <div class="weatherForecast"><b>Prévision à court terme</b><div id="weatherNext">Observation en cours…</div><div id="weatherAlert" role="status"></div></div>
+  <small>La tendance se précise dans les 45 secondes avant un changement.</small>
+ </section>
 </div>
 <div id="tune" hidden>
   <details class="adv"><summary>Réglages avancés</summary><div class="advin">
@@ -955,6 +982,7 @@ const wake=[];
 let cam={x:boat.x,y:boat.y},last=performance.now(),t=0;
 
 let wakeT=0,curBiome=-1,biomeBannerT=0;
+let weatherShelter=1;
 function step(dt){
   t+=dt;
   const sx=W/2,sy=H*0.58;
@@ -977,6 +1005,7 @@ function step(dt){
   if(touch&&!sinking&&Math.hypot(touch.x-touch.ox,touch.y-touch.oy)>10&&crewHold()){boat.a=prevA;throttle=0}
   boat.turn+=(((boat.a-prevA)/Math.max(dt,1e-4))-boat.turn)*Math.min(1,dt*6);
   const fx=Math.cos(boat.a),fy=Math.sin(boat.a);
+  weatherShelter=wxShelterFactor(boat.x,boat.y);
   boat.vx+=fx*P.acc*sailK()*throttle*sea202WeatherFactor()*dt;boat.vy+=fy*P.acc*sailK()*throttle*sea202WeatherFactor()*dt;
   // Rafales et dérive douce : perceptibles à vitesse de croisière, quasiment nulles près du port.
   const windK=wxWindStrength();
@@ -985,7 +1014,7 @@ function step(dt){
     const portSafety=Math.max(0,Math.min(1,(Math.hypot(boat.x-DOCK.x,boat.y-DOCK.y)-120)/240));
     const moving=Math.max(0,Math.min(1,(speed0-4)/35));
     const gust=.78+.22*Math.sin(t*.85+Math.sin(t*.21)*2);
-    const push=17*windK*portSafety*moving*gust*dt;
+    const push=17*windK*portSafety*moving*gust*dt*weatherShelter;
     boat.vx+=Math.cos(wx.windA)*push;
     boat.vy+=Math.sin(wx.windA)*push;
   }
@@ -5358,13 +5387,26 @@ function sea202WeatherFactor(){
  // Vent arrière favorable, vent de face légèrement défavorable.
  const angleK=rough?.085:wet?.035:0;
  const base=wx.cur==='storm'?.96:wx.cur==='orage'?.975:1;
- return Math.max(.86,Math.min(1.07,base+(angle*angleK)*wx.k));
+ return Math.max(.86,Math.min(1.07,1+(base+(angle*angleK)*wx.k-1)*weatherShelter));
 }
 function wxWindStrength(){
  if(wx.cur==='storm')return wx.k*.9;
  if(wx.cur==='orage')return wx.k*.65;
  if(wx.cur==='rain')return wx.k*.25;
  return 0;
+}
+function wxShelterFactor(x,y){
+ let protection=Math.max(0,1-Math.hypot(x-DOCK.x,y-DOCK.y)/360)*.72;
+ const vx=Math.cos(wx.windA),vy=Math.sin(wx.windA);
+ for(const is of islands){
+  const dx=x-is.x,dy=y-is.y,d=Math.hypot(dx,dy);
+  if(d>is.r+260)continue;
+  const coast=d-radiusAt(is,Math.atan2(dy,dx));
+  if(coast>230)continue;
+  const lee=Math.max(0,(dx*vx+dy*vy)/(d||1));
+  protection=Math.max(protection,Math.max(0,1-Math.max(0,coast)/230)*lee*.62);
+ }
+ return Math.max(.28,1-protection);
 }
 function wxWindName(){
  const a=(wx.windA%(Math.PI*2)+Math.PI*2)%(Math.PI*2);
@@ -5395,7 +5437,36 @@ function moonSprite(full){const k=full?1:0;if(MOON[k])return MOON[k];const c0=do
 function skyLabel(){const p=(dayT%DAY)/DAY,[n0,n1,n2]=nightB();return p<n0?'Jour':p<n1?'Crépuscule':p<n2?(fullMoon()?'Pleine lune':'Nuit'):'Aube'}
 // Météo par périodes au hasard. La pluie devient neige aux glaces et cendres aux volcans.
 const WX_NAME={clear:'',rain:'Pluie',storm:'Tempête',fog:'Brouillard',orage:'Orage'};
-const wx={cur:'clear',next:null,k:0,timer:90,windA:Math.random()*7,flashT:0,boltT:8};
+const wx={cur:'clear',next:null,k:0,timer:90,windA:Math.random()*7,flashT:0,boltT:8,planned:null,warned:false};
+const weatherBtn=document.getElementById('weatherBtn'),weatherPanel=document.getElementById('weatherPanel'),weatherClose=document.getElementById('weatherClose');
+weatherBtn.addEventListener('click',()=>{weatherPanel.hidden=false;renderWeatherPanel();weatherClose.focus()});
+function closeWeather(){weatherPanel.hidden=true;weatherBtn.focus()}
+weatherClose.addEventListener('click',closeWeather);
+weatherPanel.addEventListener('click',e=>{if(e.target===weatherPanel)closeWeather()});
+addEventListener('keydown',e=>{if(e.key==='Escape'&&!weatherPanel.hidden)closeWeather()});
+let weatherPanelRefresh=0;
+function weatherName(k){return {clear:'Mer calme',rain:'Pluie',fog:'Brouillard',storm:'Tempête',orage:'Orage'}[k]||'Variable'}
+function renderWeatherPanel(){
+ if(weatherPanel.hidden)return;
+ const wind=wxWindStrength(),next=wx.planned||wx.next;
+ document.getElementById('weatherNow').textContent=weatherName(wx.cur);
+ document.getElementById('weatherWind').textContent=wind<.08?'Vent faible':'Vent vers '+wxWindName()+' · '+(wind>.55?'fort':wind>.22?'modéré':'léger');
+ document.getElementById('weatherNeedle').style.transform='rotate('+(wx.windA+Math.PI/2)+'rad)';
+ document.getElementById('weatherShelter').textContent=weatherShelter<.75?'À l’abri du vent':weatherShelter<.93?'Partiellement abrité':'Vent de pleine mer';
+ document.getElementById('weatherNext').textContent=next?
+  'Tendance : '+weatherName(next)+' dans '+Math.max(1,Math.ceil(wx.timer))+' s environ':
+  'Conditions '+(wx.cur==='clear'?'stables':'variables')+' · tendance prochainement';
+ document.getElementById('weatherAlert').textContent=next==='storm'||next==='orage'?'⚠ Risque de '+(next==='storm'?'tempête':'orage')+' : cherche un abri.':'';
+}
+function weatherApproach(dt){
+ if(wx.timer<=45&&wx.timer>0&&!wx.planned&&!wx.next){wx.planned=pickWeather();wx.warned=false}
+ if(!wx.warned&&wx.planned&&(wx.planned==='storm'||wx.planned==='orage')&&wx.timer<=35){
+  wx.warned=true;
+  if(!foot.on&&!sinking){toast.textContent='⚠ Avis météo : '+weatherName(wx.planned)+' dans moins de 35 s';toast.style.color='#ffe19a';biomeBannerT=Math.max(biomeBannerT,3)}
+ }
+ weatherPanelRefresh-=dt;if(weatherPanelRefresh<=0){weatherPanelRefresh=1;renderWeatherPanel()}
+}
+
 function pickWeather(){const r=Math.random(),s2=season();if(s2===1)return r<.75?'clear':r<.84?'rain':r<.9?'fog':r<.94?'storm':'orage';if(s2===2)return r<.4?'clear':r<.62?'rain':r<.72?'fog':r<.86?'storm':'orage';return r<.6?'clear':r<.733?'rain':r<.837?'fog':r<.918?'storm':'orage'}
 function isWet(){return wx.cur==='rain'||wx.cur==='storm'||wx.cur==='orage'}
 function precipKind(){const b=biomeAt(boat.x,boat.y);return b===2||(b===1&&season()===3)?'snow':b===3?'ash':'rain'}
@@ -5404,8 +5475,9 @@ const skyChip=document.getElementById('skyChip');let skyTxt='';
 const drops2=[];
 function updateSky(dt){dayT+=dt;
   wx.timer-=dt;
-  if(wx.timer<=0&&!wx.next){wx.next=pickWeather();if(wx.next===wx.cur){wx.next=null;wx.timer=60+Math.random()*90}}
-  if(wx.next){wx.k-=dt/8;if(wx.k<=0){wx.k=0;wx.cur=wx.next;wx.next=null;wx.timer=90+Math.random()*90;wx.windA=Math.random()*7}}
+  weatherApproach(dt);
+  if(wx.timer<=0&&!wx.next){wx.next=wx.planned||pickWeather();wx.planned=null;wx.warned=false;if(wx.next===wx.cur){wx.next=null;wx.timer=60+Math.random()*90}}
+  if(wx.next){wx.k-=dt/8;if(wx.k<=0){wx.k=0;wx.cur=wx.next;wx.next=null;wx.planned=null;wx.warned=false;wx.timer=90+Math.random()*90;wx.windA=Math.random()*7}}
   else if(wx.cur!=='clear')wx.k=Math.min(1,wx.k+dt/8);
   wx.windA+=dt*.02;
   if(wx.cur==='orage'&&wx.k>.6){wx.boltT-=dt;if(wx.boltT<=0){wx.boltT=4+Math.random()*5;wx.flashT=.5;eshots.push({k:'boltfx',x:boat.x+(Math.random()-.5)*W*.8,y:boat.y+(Math.random()-.5)*H*.7,life:.28,seed:Math.random()*99});if(AC){setTimeout(()=>{noise(1.4,.22,300);tone(60,1,'sine',.08,0,-20)},400+Math.random()*700)}}}
