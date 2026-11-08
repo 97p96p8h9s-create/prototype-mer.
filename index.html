@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="fr">
 <head>
-<title>Prototype Mer 2.0.5</title>
+<title>Prototype Mer 2.0.7</title>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -30,6 +30,8 @@ canvas{display:block;width:100%;height:100%}
 #skyChip span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#skyChip small{font-size:12px;font-weight:700;opacity:.8;white-space:nowrap}
 .chip{background:var(--panel);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:700;letter-spacing:.02em;font-variant-numeric:tabular-nums}
 #help{white-space:nowrap;line-height:1.35;position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 24px);transform:translateX(-50%);background:var(--panel);padding:10px 16px;border-radius:14px;font-size:14px;text-align:center;max-width:80%;transition:opacity .6s;pointer-events:none}
+#zoneHint{display:none;align-items:center;gap:8px;padding:7px 12px;border-radius:14px;background:rgba(6,40,56,.76);backdrop-filter:blur(8px);max-width:min(58vw,260px);white-space:normal;line-height:1.15}#zoneHintTxt{display:block;overflow:hidden;text-overflow:ellipsis}#zoneHint b{color:#ffe7a8}#zoneHint em{font-style:normal;color:#bfe9ff}
+
 #gear.dot,#bestBtn.dot{position:relative}#gear.dot::after,#bestBtn.dot::after{content:'';position:absolute;top:-2px;right:-2px;width:10px;height:10px;border-radius:50%;background:#ff6a4a;border:2px solid #fff}
 #gear{pointer-events:auto;border:0;background:var(--panel);color:var(--text);font:inherit;font-weight:700;font-size:13px;padding:6px 12px;border-radius:999px}
 #gear:focus-visible,.hudbtn:focus-visible{outline:2px solid var(--foam)}
@@ -185,6 +187,18 @@ body.inmine .stats,body.inmine #help{display:none!important}body.inmine #toast{t
 #bossBar .bb{height:8px;border-radius:99px;background:rgba(255,255,255,.18);overflow:hidden;margin-top:4px}#bossBar .bb i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#e8503a,#ff9a5a);transition:width .15s}
 #bossBar.rage{box-shadow:0 0 12px rgba(232,80,58,.8)}#bossBar.rage span{color:#ffb39a}
 
+/* 2.0.7 — interface iPhone plus discrète et plus guidée */
+@media (pointer:coarse) and (orientation:portrait){
+ #hud{align-items:flex-start}
+ #hud .left{gap:5px}
+ #hud .right{gap:8px}
+ .stats{max-width:min(56vw,236px);padding:7px 10px 8px;background:rgba(7,36,49,.68);backdrop-filter:blur(10px);box-shadow:0 8px 24px rgba(0,0,0,.18)}
+ .stats .st{min-width:64px}
+ #zoneHint{display:flex}
+ #gear,.hudbtn,#miniBtn{box-shadow:0 6px 18px rgba(0,0,0,.16)}
+ #miniBtn{background:rgba(231,214,172,.95)}
+}
+
 /* Prototype Mer 2.0.3 — mobile portrait, non-destructive overrides */
 @media (orientation:portrait) and (max-width:650px){
  #hud{gap:4px;padding-left:max(7px,env(safe-area-inset-left));padding-right:max(7px,env(safe-area-inset-right))}
@@ -246,6 +260,7 @@ body.inmine .stats,body.inmine #help{display:none!important}body.inmine #toast{t
       <div class="st" id="fearRow" hidden><span>Peur</span><div class="bar"><i id="fear" style="width:0%;background:#9a7ad8"></i></div></div>
       <div class="st" id="dgRow" hidden><span>Danger</span><div class="bar"><i id="dg" style="width:0%;background:#e8503a"></i></div></div>
     </div>
+    <div class="chip" id="zoneHint"><span id="zoneHintTxt">Cap au large</span></div>
   </div>
   <div class="right">
     <button id="gear" type="button">Réglages</button>
@@ -818,6 +833,17 @@ function doTap(e){
 const mobileStick=document.getElementById('mobileStick');
 const mobileKnob=mobileStick?.querySelector('.knob');
 let stickPointer=null,stickOrigin=null,stickDragged=false;
+const zoneHintEl=document.getElementById('zoneHint');
+const zoneHintTxt=document.getElementById('zoneHintTxt');
+let zoneHintClock=0;
+function islandHudName(is){if(!is)return 'Au large';if(is.home)return 'Port';if(is.crater)return 'Île volcanique';if(is.crys)return 'Île glacée';if(is.flies||is.b===1)return 'Île de mangrove';if(is.b===0)return 'Île tropicale';if(is.b===2)return 'Île gelée';if(is.b===3)return 'Île de cendre';return 'Île'}
+function updateZoneHint(dt){
+ if(!zoneHintTxt)return;zoneHintClock-=dt;if(zoneHintClock>0)return;zoneHintClock=.16;
+ if(foot.on){zoneHintEl.style.opacity='1';zoneHintTxt.innerHTML='<b>Exploration à pied</b> · Cherche ressources, coffres et entrées';return}
+ let best=null;for(const is of islands){const d=Math.hypot(boat.x-is.x,boat.y-is.y)-is.r;if(!best||d<best.d)best={is,d}}
+ if(best&&best.d<900){const name=islandHudName(best.is),dist=Math.max(0,Math.round(best.d));const near=dist<120;zoneHintEl.style.opacity='1';zoneHintTxt.innerHTML=near?`<b>${name}</b> · <em>Accoste pour explorer</em>`:`<b>${name}</b> · ${dist} m`;return}
+ const wxLabel={clear:'Mer calme',rain:'Pluie',fog:'Brouillard',storm:'Tempête',orage:'Orage'}[wx.cur]||'Au large';zoneHintEl.style.opacity='.92';zoneHintTxt.innerHTML=`<b>${wxLabel}</b> · ${BIOME_NAME[biomeAt(boat.x,boat.y)]||'Cap au large'}`;
+}
 function floatingEnabled(){return matchMedia('(pointer:coarse) and (orientation:portrait)').matches}
 function beginFloating(e){
  stickPointer=e.pointerId;stickDragged=false;
@@ -2727,7 +2753,7 @@ function updateWater(dt){
   for(let i=ripples.length-1;i>=0;i--){const r=ripples[i];r.life-=dt*1.6;r.r+=(r.max-r.r)*Math.min(1,dt*5);if(r.life<=0)ripples.splice(i,1)}
   if(shockT>0)shockT-=dt;if(flashT>0)flashT-=dt}
 function drawWater(ox,oy){
-  for(const r of ripples){ctx.strokeStyle=`rgba(255,255,255,${Math.max(0,r.life)*.6})`;ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(r.x+ox,r.y+oy,r.r,r.r*.8,0,0,7);ctx.stroke()}
+  for(const r of ripples){ctx.strokeStyle=`rgba(255,255,255,${Math.max(0,r.life)*.6})`;ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(r.x+ox,r.y+oy,r.r,r.r*.8,0,0,7);ctx.stroke();ctx.fillStyle=`rgba(255,255,255,${Math.max(0,r.life)*.16})`;ctx.beginPath();ctx.ellipse(r.x+ox,r.y+oy,r.r*.55,r.r*.18,0,0,7);ctx.fill()}
   for(const d of drops){ctx.fillStyle='rgba(0,40,60,.18)';ctx.beginPath();ctx.arc(d.x+ox,d.y+oy,2,0,7);ctx.fill();
     ctx.fillStyle='rgba(235,250,255,.95)';ctx.beginPath();ctx.ellipse(d.x+ox,d.y+oy-d.h,2.2,3,0,0,7);ctx.fill()}
   if(shockT>0){const k=1-shockT/.6;ctx.strokeStyle=`rgba(${shockC},${(1-k)*.9})`;ctx.lineWidth=6*(1-k)+1;ctx.beginPath();ctx.arc(boat.x+ox,boat.y+oy,20+k*160,0,7);ctx.stroke()}}
@@ -5140,6 +5166,7 @@ function draw(st){updateSun();
     ctx.beginPath();for(let i=0;i<=72;i++){const a=i/72*Math.PI*2,r=radiusAt(is,a)*(1.08+Math.sin(t*1.6+a*3)*.02);ctx.lineTo(X+Math.cos(a)*r,Y+Math.sin(a)*r)}ctx.stroke();
     if(!is.sprite)buildIsland(is);
     ctx.drawImage(is.sprite,X-h,Y-h,is.size,is.size);
+    {const dBoat=Math.hypot(boat.x-is.x,boat.y-is.y)-is.r;if(!foot.on&&dBoat<720){const pulse=.5+.5*Math.sin(t*2+is.x*.01),rk=1.12+pulse*.05;ctx.strokeStyle=`rgba(255,255,255,${.08+.16*pulse})`;ctx.lineWidth=2.2;ctx.beginPath();for(let i=0;i<=54;i++){const a=i/54*Math.PI*2,r=radiusAt(is,a)*rk;ctx.lineTo(X+Math.cos(a)*r,Y+Math.sin(a)*r)}ctx.stroke();if(dBoat<130){ctx.strokeStyle=`rgba(255,231,168,${.25+.25*pulse})`;ctx.lineWidth=2.8;ctx.beginPath();for(let i=0;i<=36;i++){const a=i/36*Math.PI*2,r=radiusAt(is,a)*(1.03+Math.sin(a*4+t)*.01);ctx.lineTo(X+Math.cos(a)*r,Y+Math.sin(a)*r)}ctx.stroke();}}}
     if(is.b===0||is.b===2){ctx.save();ctx.beginPath();for(let i=0;i<=48;i++){const a=i/48*Math.PI*2,r=radiusAt(is,a)*1.62;ctx.lineTo(X+Math.cos(a)*r,Y+Math.sin(a)*r)}ctx.closePath();
       for(let i=48;i>=0;i--){const a=i/48*Math.PI*2,r=radiusAt(is,a)*1.04;ctx.lineTo(X+Math.cos(a)*r,Y+Math.sin(a)*r)}ctx.closePath();ctx.clip();
       ctx.globalCompositeOperation='lighter';const pat=causticPat(),R0=is.r*1.7;
@@ -5529,14 +5556,21 @@ function adaptRes(rawDt){if(rawDt>.2||document.hidden)return;perfAcc+=rawDt;perf
 function drawMerFoam(){
  if(ECO||paused||document.hidden||!boat||!Number.isFinite(boat.vx)||!Number.isFinite(boat.vy))return;
  const speed=Math.hypot(boat.vx,boat.vy);
- if(speed<22||!boatScr||!Number.isFinite(boatScr.x))return;
- const a=Math.atan2(boat.vy,boat.vx),wake=Math.min(1,speed/170);
- ctx.save();ctx.strokeStyle=`rgba(225,248,250,${(.10+.15*wake).toFixed(3)})`;ctx.lineWidth=1.6;
- for(let i=0;i<3;i++){
-  const d=19+i*12,px=boatScr.x-Math.cos(a)*d,py=boatScr.y-Math.sin(a)*d;
-  const side=7+i*4,wiggle=Math.sin(t*3+i)*2;
+ if(speed<18||!boatScr||!Number.isFinite(boatScr.x))return;
+ const a=Math.atan2(boat.vy,boat.vx),wake=Math.min(1,speed/185);
+ ctx.save();
+ ctx.strokeStyle=`rgba(225,248,250,${(.12+.18*wake).toFixed(3)})`;ctx.lineWidth=1.7;ctx.lineCap='round';
+ for(let i=0;i<4;i++){
+  const d=18+i*13,px=boatScr.x-Math.cos(a)*d,py=boatScr.y-Math.sin(a)*d;
+  const side=8+i*4.5,wiggle=Math.sin(t*3.2+i*1.4)*2.2;
   ctx.beginPath();ctx.moveTo(px+Math.sin(a)*(side+wiggle),py-Math.cos(a)*(side+wiggle));
   ctx.lineTo(px-Math.sin(a)*(side+wiggle),py+Math.cos(a)*(side+wiggle));ctx.stroke();
+ }
+ if(speed>42){
+  for(const sd of [-1,1]){
+   const px=boatScr.x+Math.cos(a)*18-Math.sin(a)*sd*10,py=boatScr.y+Math.sin(a)*18+Math.cos(a)*sd*10;
+   ctx.fillStyle=`rgba(245,252,255,${.18+.2*wake})`;ctx.beginPath();ctx.ellipse(px,py,8+6*wake,3+2*wake,a+sd*.35,0,Math.PI*2);ctx.fill();
+  }
  }
  ctx.restore();
 }
@@ -5544,7 +5578,7 @@ function loop(now){if(last){const ms=Math.max(0,now-last);MER_PERF.frames++;MER_
   // Une touche maintenue produit un vecteur de déplacement, sans simuler de clic.
   if(!paused&&!document.hidden&&!touch&&heldKeys.size){let dx=0,dy=0;for(const k of heldKeys){if(k==='ArrowLeft'||k.toLowerCase()==='a')dx--;if(k==='ArrowRight'||k.toLowerCase()==='d')dx++;if(k==='ArrowUp'||k.toLowerCase()==='w')dy--;if(k==='ArrowDown'||k.toLowerCase()==='s')dy++}const n=Math.hypot(dx,dy);if(n){dx/=n;dy/=n;touch={ox:W/2,oy:H*.58,x:W/2+dx*110,y:H*.58+dy*110,moved:true,keyboard:true}}}
   if(touch&&touch.keyboard&&(!heldKeys.size||paused||document.hidden))touch=null;
-  if(MX.on){mineUpdate(dt);if(MX.on){mineDraw();drawVictory(realDt);requestAnimationFrame(loop);return}}const st=step(dt);updateCombat(dt);updateChests(dt);updateTreasure(dt);updateDrift(dt);updateSea202(dt);updateDaily(dt);updateMerchant(dt);updateMarket(dt);updateVillageLife(dt);updateTide(dt);updateNature(dt);updateFauna(dt);updateIEV(dt);if((t%1)<dt)updateSeason();if((t%1)<dt)updateMoonFish();updateAmbient(realDt);if((t%.5)<dt)updateCards();if((t%1)<dt)updateVillage();updateGuardians(dt);updateOrbs(dt);updateFish(dt);updateLife(dt);updateSky(dt);updateKraken(dt);updateCrew(dt);updateMap(dt);manageIslands();draw(st);drawMerFoam();drawSea202();requestAnimationFrame(loop)}
+  if(MX.on){mineUpdate(dt);if(MX.on){mineDraw();drawVictory(realDt);requestAnimationFrame(loop);return}}const st=step(dt);updateCombat(dt);updateChests(dt);updateTreasure(dt);updateDrift(dt);updateSea202(dt);updateDaily(dt);updateMerchant(dt);updateMarket(dt);updateVillageLife(dt);updateTide(dt);updateNature(dt);updateFauna(dt);updateIEV(dt);if((t%1)<dt)updateSeason();if((t%1)<dt)updateMoonFish();updateAmbient(realDt);if((t%.5)<dt)updateCards();if((t%1)<dt)updateVillage();updateGuardians(dt);updateOrbs(dt);updateFish(dt);updateLife(dt);updateSky(dt);updateKraken(dt);updateCrew(dt);updateMap(dt);manageIslands();updateZoneHint(dt);draw(st);drawMerFoam();drawSea202();requestAnimationFrame(loop)}
 requestAnimationFrame(loop);
 })();
 </script>
