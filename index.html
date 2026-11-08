@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="fr">
 <head>
-<title>Prototype Mer 2.1.7</title>
+<title>Prototype Mer 2.1.8</title>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3775,6 +3775,8 @@ function drawMarket(ox,oy,z){const X0=MARKET.x+ox,Y0=MARKET.y+oy;if(X0<-160||X0>
    ctx.fillStyle='#996b3f';ctx.fillRect(x-4,y-2,8,6);
    ctx.fillStyle='#478b57';for(let j=0;j<4;j++){ctx.beginPath();ctx.ellipse(x+(j-1.5)*2,y-4-j%2*2,2.2,4,(j-2)*.28,0,Math.PI*2);ctx.fill()}
   }
+  // Large dalle centrale et enseigne textile : renforce la lecture du marché.
+  ctx.save();ctx.globalAlpha=.85;ctx.fillStyle='#e2c394';ctx.beginPath();ctx.ellipse(X0+5,Y0+12,52,57,0,0,Math.PI*2);ctx.fill();ctx.restore();
   // étals
   for(const st of MARKET.stalls)drawStall(st,st.x+ox,st.y+oy);
   // guirlande de fanions au-dessus de l'entrée du ponton
@@ -4001,7 +4003,9 @@ const MINE={x:HOME.x+HOME.r*.12,y:HOME.y-HOME.r*.6,scr:{x:-999,y:-999}};
 let campFlick=1;
 function drawCampfire(ox,oy){const X=CAMP.x+ox,Y=CAMP.y+oy;if(X<-70||X>W+70||Y<-70||Y>H+70)return;const lit=FIRE.t>0,k=lit?Math.min(1.25,.65+FIRE.t/FIRE.max):0;
   campFlick+=((.8+Math.random()*.4)-campFlick)*.25;
-  ctx.fillStyle='rgba(60,40,20,.35)';ctx.beginPath();ctx.ellipse(X+1,Y+2,22,17,0,0,7);ctx.fill();
+  ctx.fillStyle='rgba(88,56,22,.50)';ctx.beginPath();ctx.ellipse(X+1,Y+2,45,31,0,0,7);ctx.fill();
+  ctx.fillStyle='#d6b782';ctx.beginPath();ctx.ellipse(X,Y+2,41,27,0,0,7);ctx.fill();
+  ctx.strokeStyle='#8b6137';ctx.lineWidth=2.5;ctx.beginPath();ctx.ellipse(X,Y+2,41,27,0,0,7);ctx.stroke();
   // Petits bancs et provisions autour du feu, purement décoratifs.
   for(const [dx,dy] of [[-27,15],[26,15]]){
     ctx.save();ctx.translate(X+dx,Y+dy);ctx.rotate(dx<0?-.25:.25);
@@ -4107,13 +4111,53 @@ function drawHomeDecor(ox,oy){
  if(x>W+8||x+340< -8||y>H+8||y+340< -8)return;
  ctx.drawImage(homeDecorSprite(),x,y);
 }
+// Refonte forte 2.1.8 : sol peint une seule fois sur canvas, limité au cœur de l'île.
+let HOME_GROUND_SPRITE=null;
+function homeGroundSprite(){
+ if(HOME_GROUND_SPRITE)return HOME_GROUND_SPRITE;
+ const S=560,C=S/2,cv=document.createElement('canvas');cv.width=cv.height=S;
+ const g=cv.getContext('2d');g.translate(C,C);
+ const ellipse=(x,y,rx,ry,c)=>{g.fillStyle=c;g.beginPath();g.ellipse(x,y,rx,ry,0,0,Math.PI*2);g.fill()};
+ // Grand socle végétal : trois nuances assez contrastées pour être vues même sur téléphone.
+ ellipse(-28,8,132,126,'rgba(31,99,55,.32)');
+ ellipse(-50,-51,92,70,'rgba(46,123,61,.35)');
+ ellipse(16,81,106,76,'rgba(27,106,66,.27)');
+ ellipse(-34,17,105,85,'rgba(207,173,108,.23)');
+ // Quartiers : sol ocre, place claire, terrasse du campement et potager.
+ ellipse(-34,12,80,54,'rgba(174,124,67,.43)');
+ ellipse(36,-4,67,91,'rgba(225,187,119,.65)');
+ ellipse(-41,56,63,46,'rgba(163,112,64,.50)');
+ ellipse(-24,-67,51,39,'rgba(99,135,57,.55)');
+ // Anneaux de pierre grossiers et touffes : tous précalculés.
+ let seed=218;const rand=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296};
+ for(let i=0;i<330;i++){
+  const a=rand()*6.283185,r=Math.sqrt(rand())*131,x=Math.cos(a)*r-14,y=Math.sin(a)*r;
+  if(x>15&&x<96&&Math.abs(y)<78)continue;
+  if(rand()<.25){ellipse(x,y,1.4+rand()*3,1+rand()*2,'rgba(244,228,175,.64)');continue}
+  g.strokeStyle=rand()<.5?'rgba(26,92,49,.67)':'rgba(203,231,111,.72)';g.lineWidth=1.2;
+  g.beginPath();g.moveTo(x,y+3);g.lineTo(x-3,y-3-rand()*4);g.moveTo(x,y+3);g.lineTo(x+3,y-3-rand()*4);g.stroke();
+ }
+ for(let i=0;i<52;i++){
+  const a=i*2.3999,r=101+rand()*25,x=Math.cos(a)*r-9,y=Math.sin(a)*r;
+  const col=['#f5d28e','#f7a2b9','#e9e7c2','#b3d7e9'][i%4];
+  for(let k=0;k<5;k++){const v=k*Math.PI*2/5;ellipse(x+Math.cos(v)*2.7,y+Math.sin(v)*2.7,1.9,1.9,col)}
+  ellipse(x,y,1.35,1.35,'#e4a63e');
+ }
+ g.setTransform(1,0,0,1,0,0);HOME_GROUND_SPRITE=cv;return cv;
+}
+function drawHomeGround(ox,oy){
+ const x=HOME.x+ox-280,y=HOME.y+oy-280;
+ if(x>W+5||y>H+5||x+560< -5||y+560< -5)return;
+ ctx.drawImage(homeGroundSprite(),x,y);
+}
 function drawHomePaths(ox,oy){
  if(HOME.x+ox<-260||HOME.x+ox>W+260||HOME.y+oy<-260||HOME.y+oy>H+260)return;
  // Chemins purement visuels : aucune modification des collisions ou des autres îles.
  const road=(pts)=>{ctx.beginPath();pts.forEach((q,i)=>{const x=q.x+ox,y=q.y+oy;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)});
-   ctx.strokeStyle='rgba(89,62,30,.21)';ctx.lineWidth=15;ctx.lineJoin='round';ctx.lineCap='round';ctx.stroke();
-   ctx.strokeStyle='rgba(214,185,124,.8)';ctx.lineWidth=11;ctx.stroke();
-   ctx.strokeStyle='rgba(244,217,164,.4)';ctx.lineWidth=2;ctx.setLineDash([2,8]);ctx.stroke();ctx.setLineDash([]);
+   ctx.strokeStyle='rgba(55,64,32,.45)';ctx.lineWidth=32;ctx.lineJoin='round';ctx.lineCap='round';ctx.stroke();
+   ctx.strokeStyle='#9b7547';ctx.lineWidth=27;ctx.stroke();
+   ctx.strokeStyle='#e7bc78';ctx.lineWidth=22;ctx.stroke();
+   ctx.strokeStyle='rgba(255,237,181,.85)';ctx.lineWidth=2.2;ctx.setLineDash([2,8]);ctx.stroke();ctx.setLineDash([]);
    ctx.strokeStyle='rgba(98,92,63,.33)';ctx.lineWidth=1;
    for(let n=1;n<pts.length;n++){
     const a=pts[n-1],b=pts[n],dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1,nx=-dy/len,ny=dx/len;
@@ -4249,10 +4293,20 @@ document.getElementById('shipyardClose').addEventListener('click',()=>{document.
 document.getElementById('shipyardEl').addEventListener('pointerdown',e=>e.stopPropagation());
 function drawVillage(ox,oy){if(vStage<2)return;const X0=HOME.x+ox,Y0=HOME.y+oy;if(X0<-260||X0>W+260||Y0<-260||Y0>H+260)return;
   const P=v=>[v.x+ox,v.y+oy];
-  drawHomeDecor(ox,oy);
   drawHomePaths(ox,oy);
+  drawHomeDecor(ox,oy);
+  // Étendard visible du port, uniquement visuel : on repère directement la nouvelle direction artistique.
+  if(foot.on){const px=MARKET.x+ox+6,py=MARKET.y+oy-104;
+   ctx.save();ctx.fillStyle='#674320';ctx.fillRect(px-67,py-16,134,29);
+   ctx.fillStyle='#f2d49a';ctx.fillRect(px-64,py-13,128,23);
+   ctx.strokeStyle='#8d5a31';ctx.lineWidth=2;ctx.strokeRect(px-64,py-13,128,23);
+   ctx.fillStyle='#51351d';ctx.textAlign='center';ctx.font='900 11px Nunito,system-ui';ctx.fillText('PORT DES ALIZÉS',px,py+1);
+   ctx.font='800 7px Nunito,system-ui';ctx.fillText('VILLAGE TROPICAL · 2.1.8',px,py+8);ctx.restore()}
   // étape 2 : maisons et potager
   {const [x,y]=P(VILL.garden);
+    ctx.fillStyle='#ddc28c';ctx.fillRect(x-31,y-25,62,48);
+    ctx.fillStyle='#538d43';ctx.fillRect(x-27,y-21,54,40);
+    ctx.strokeStyle='#e9cb90';ctx.lineWidth=3;ctx.strokeRect(x-31,y-25,62,48);
     // Entourage végétal et clôture hors des parcelles, sans obstacle physique.
     ctx.strokeStyle='#cba16a';ctx.lineWidth=2;
     for(const side of [-1,1])for(let i=0;i<5;i++){
@@ -4275,7 +4329,13 @@ function drawVillage(ox,oy){if(vStage<2)return;const X0=HOME.x+ox,Y0=HOME.y+oy;i
     ctx.strokeStyle='rgba(250,220,161,.52)';ctx.lineWidth=.7;ctx.strokeRect(x-19,y-14,38,28);
     if(foot.on){const ready=HOME_GARDEN.some(gardenReady);ctx.fillStyle=ready?'rgba(52,112,45,.91)':'rgba(6,40,56,.82)';ctx.beginPath();ctx.roundRect(x-22,y-27,44,12,5);ctx.fill();ctx.fillStyle='#fff4d7';ctx.font='800 8px Nunito,system-ui';ctx.textAlign='center';ctx.fillText(ready?'À RÉCOLTER':'POTAGER',x,y-19)}}
 
-  for(const h of VILL.houses){const [x,y]=P(h);drawHouse(h,x,y)}
+  for(const h of VILL.houses){const [x,y]=P(h);
+    // Terrasse en pierre et auvent coloré, sans changement de collision.
+    ctx.fillStyle='#b69263';ctx.beginPath();ctx.ellipse(x,y+15,27,17,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#e7c891';ctx.beginPath();ctx.ellipse(x,y+15,23,13,0,0,Math.PI*2);ctx.fill();
+    ctx.save();ctx.translate(x,y);ctx.scale(1.28,1.28);ctx.translate(-x,-y);drawHouse(h,x,y);ctx.restore();
+    ctx.strokeStyle='#774528';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x-24,y+19);ctx.lineTo(x+24,y+19);ctx.stroke()
+  }
   // étape 3 : puits, filets, villageois
   if(vStage>=3){{const [x,y]=P(VILL.well);ctx.fillStyle='rgba(0,0,0,.2)';ctx.beginPath();ctx.arc(x+2,y+2,9,0,7);ctx.fill();ctx.fillStyle='#9aa0a6';ctx.beginPath();ctx.arc(x,y,8.5,0,7);ctx.fill();ctx.fillStyle='#3a6a8a';ctx.beginPath();ctx.arc(x,y,5,0,7);ctx.fill();
       ctx.fillStyle='rgba(255,255,255,.5)';ctx.beginPath();ctx.arc(x-1.5,y-1.5,1.4,0,7);ctx.fill();ctx.strokeStyle='#6b4423';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x-10,y);ctx.lineTo(x+10,y);ctx.stroke();ctx.fillStyle='#8a5a33';ctx.fillRect(x-1.5,y-1.5,3,3)}
@@ -4289,6 +4349,12 @@ function drawVillage(ox,oy){if(vStage<2)return;const X0=HOME.x+ox,Y0=HOME.y+oy;i
   if(vStage>=4){const [x,y]=P(VILL.light);lighthouse(ctx,x,y)}
   // étape 5 : chantier naval et drapeaux
   if(vStage>=5){const [x,y]=P(VILL.yard);
+    ctx.fillStyle='#66563e';ctx.fillRect(x-37,y-37,75,84);
+    ctx.fillStyle='#b88750';ctx.fillRect(x-34,y-35,69,78);
+    ctx.strokeStyle='#6b4526';ctx.lineWidth=2;
+    for(let i=-30;i<=34;i+=9){ctx.beginPath();ctx.moveTo(x+i,y-35);ctx.lineTo(x+i,y+43);ctx.stroke()}
+    ctx.fillStyle='#314f68';ctx.fillRect(x-33,y-43,67,9);
+    ctx.fillStyle='#f0d198';ctx.font='800 10px Nunito,system-ui';ctx.textAlign='center';ctx.fillText('CHANTIER NAVAL',x,y-36);
     // Poutres et gréements à proximité du chantier.
     ctx.fillStyle='#9b6a3d';for(let i=0;i<3;i++)ctx.fillRect(x-31,y+22+i*3,16,2);
     ctx.strokeStyle='#e5c992';ctx.lineWidth=1;ctx.beginPath();ctx.arc(x+27,y-9,6,.1,Math.PI*1.92);ctx.arc(x+27,y-9,3,.1,Math.PI*1.92);ctx.stroke();
@@ -5686,6 +5752,7 @@ function draw(st){updateSun();
       ctx.restore()}
     tideBeach(is,X,Y);drawIslandLife(is,X,Y,h);
   }
+  drawHomeGround(ox,oy);
   drawTide(ox,oy);drawMarsh(ox,oy);drawWev(ox,oy);drawEvtWorld(ox,oy);drawFearWorld(ox,oy);drawFauna(ox,oy);drawIEV(ox,oy);drawLandmarks(ox,oy);drawLandmarksLM(ox,oy);
   drawGuardians(ox,oy);
   drawChests(ox,oy);drawTreasure(ox,oy);drawDockZone(ox,oy);
