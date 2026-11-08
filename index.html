@@ -940,7 +940,10 @@ let zoneHintClock=0;
 function islandHudName(is){if(!is)return 'Au large';if(is.home)return 'Port';if(is.crater)return 'Île volcanique';if(is.crys)return 'Île glacée';if(is.flies||is.b===1)return 'Île de mangrove';if(is.b===0)return 'Île tropicale';if(is.b===2)return 'Île gelée';if(is.b===3)return 'Île de cendre';return 'Île'}
 function updateZoneHint(dt){
  if(!zoneHintTxt)return;zoneHintClock-=dt;if(zoneHintClock>0)return;zoneHintClock=.16;
- if(foot.on){zoneHintEl.style.opacity='1';const n=foot.is?.ground?.length||0;zoneHintTxt.innerHTML=n?`<b>À pied</b> · ${n} ressources au sol · touche pour récolter`:'<b>À pied</b> · Glisse pour marcher · touche pour agir';return}
+ if(foot.on){zoneHintEl.style.opacity='1';const n=foot.is?.ground?.length||0;
+  if(foot.is?.home){zoneHintTxt.textContent=dayT<homeHarvestUntil?'Récolte · '+homeHarvestLine():
+   'Île principale · '+n+' ressources · '+homeGardenStatus();return}
+  zoneHintTxt.innerHTML=n?`<b>À pied</b> · ${n} ressources au sol · touche pour récolter`:'<b>À pied</b> · Glisse pour marcher · touche pour agir';return}
  let best=null;for(const is of islands){const d=Math.hypot(boat.x-is.x,boat.y-is.y)-is.r;if(!best||d<best.d)best={is,d}}
  if(best&&best.d<900){const name=islandHudName(best.is),dist=Math.max(0,Math.round(best.d));const near=dist<120;zoneHintEl.style.opacity='1';zoneHintTxt.innerHTML=near?`<b>${name}</b> · <em>Accoste pour explorer</em>`:`<b>${name}</b> · ${dist} m`;return}
  const wxLabel={clear:'Mer calme',rain:'Pluie',fog:'Brouillard',storm:'Tempête',orage:'Orage'}[wx.cur]||'Au large';const gust=wxWindStrength()>.1?' · vent '+wxWindName():'';zoneHintEl.style.opacity='.92';zoneHintTxt.innerHTML=`<b>${wxLabel}</b>${gust} · ${BIOME_NAME[biomeAt(boat.x,boat.y)]||'Cap au large'}`;
@@ -4079,7 +4082,7 @@ function gardenCanHarvest(p){
 function gardenHarvest(p){
  if(!gardenReady(p)||!gardenCanHarvest(p))return;
  const c=HOME_CROPS[p.type]||HOME_CROPS.fruit;
- addRes(c.id,c.gain);if(c.bonus)addRes(c.bonus,c.bonusN);
+ addRes(c.id,c.gain);homeHarvestNotice(c.id,c.gain);if(c.bonus){addRes(c.bonus,c.bonusN);homeHarvestNotice(c.bonus,c.bonusN)}
  p.at=0;p.water=false;
  popText(VILL.garden.x,VILL.garden.y-18,'Récolte : '+c.name,'180,235,140');
  if(AC)tone(760,.12,'triangle',.05);saveGame();renderGarden();
@@ -4564,6 +4567,19 @@ function ensureTrees(is){if(is.trees||!is.crowns)return;const h=is.size/2,sv=ISL
   if(sv){(sv.c||[]).forEach(([k,c,r])=>{if(is.trees[k]){is.trees[k].cut=c;is.trees[k].ripeAt=r}});is.planted=(sv.p||[]).map(([x,y,at,r])=>({x,y,at,ripeAt:r}))}}
 const TREE_HP=5; // coups de hache par arbre
 function treeAlive(tr){if(tr.cut&&dayT-tr.cut>TREE_REGROW){tr.cut=0;tr.hp=TREE_HP}if(!tr.cut&&tr.hp<TREE_HP&&t-tr.hitT>10)tr.hp=TREE_HP;return !tr.cut}
+// Bilan de collecte limité à l'île principale, sans modifier les objets sauvés.
+const homeHarvestSummary={wood:0,fruit:0,stone:0,other:0};
+let homeHarvestUntil=0;
+function homeHarvestNotice(id,n){
+ if(!foot.on||!foot.is?.home||!n)return;
+ const k=id==='r:bois'?'wood':id==='r:fruit'?'fruit':id==='r:pierre'?'stone':'other';
+ homeHarvestSummary[k]+=n;homeHarvestUntil=dayT+8;
+}
+function homeHarvestLine(){
+ return [['bois',homeHarvestSummary.wood],['fruits',homeHarvestSummary.fruit],
+  ['pierres',homeHarvestSummary.stone],['divers',homeHarvestSummary.other]]
+  .filter(x=>x[1]>0).map(x=>x[1]+' '+x[0]).join(' · ');
+}
 function homeTreeRegrowth(tr){
  if(!tr.cut)return 'Arbre disponible';
  const remaining=Math.max(0,TREE_REGROW-(dayT-tr.cut));
@@ -4596,7 +4612,7 @@ function spawnGround(is){const day=Math.floor(dayT/DAY);if(is.groundDay===day)re
     const opts=['stone'];if(is.b===0||is.b===1){if(r>.6)opts.push('shell','shell');if(s2===0)opts.push('flower','flower');if(is.b===1||s2===2)opts.push('mush','mush')}
     if(is.b===2)opts.push('stone');if(is.b===3)opts.push('stone','stone');
     is.ground.push({x,y,k:opts[(Math.random()*opts.length)|0],ph:Math.random()*7})}}
-function disembark(is){wantCard('etals');document.body.classList.add('onfoot');const a=Math.atan2(boat.y-is.y,boat.x-is.x),R=radiusAt(is,a)*.86;foot.on=true;foot.is=is;if(docked()){foot.x=DOCK.x-10;foot.y=HOME.y;foot.a=Math.PI}else{foot.x=is.x+Math.cos(a)*R;foot.y=is.y+Math.sin(a)*R;foot.a=a+Math.PI}
+function disembark(is){if(is.home){for(const k of Object.keys(homeHarvestSummary))homeHarvestSummary[k]=0;homeHarvestUntil=0}wantCard('etals');document.body.classList.add('onfoot');const a=Math.atan2(boat.y-is.y,boat.x-is.x),R=radiusAt(is,a)*.86;foot.on=true;foot.is=is;if(docked()){foot.x=DOCK.x-10;foot.y=HOME.y;foot.a=Math.PI}else{foot.x=is.x+Math.cos(a)*R;foot.y=is.y+Math.sin(a)*R;foot.a=a+Math.PI}
   if(crew.playing>0){crew.playing=0;stopShanty()}foot.land={x:foot.x,y:foot.y};foot.goal=null;
   boat.vx=boat.vy=0;crew.st='foot';ensureTrees(is);if(!is.planted)is.planted=[];spawnGround(is);wantCard('iles');if(AC)tone(520,.08,'sine',.05)}
 function embark(){document.body.classList.remove('onfoot');foot.on=false;PRINTS.length=0;foot.lpx=undefined;foot.goal=null;crew.st='boat';crew.dock=-99;if(AC)tone(620,.08,'sine',.05);saveGame()}
@@ -4605,7 +4621,7 @@ function footAct(tg){const is=foot.is;
   if(tg.k==='ground'){const g=tg.o,i=is.ground.indexOf(g);if(i<0)return;
     if(is.home)popText(g.x,g.y-17,g.k==='stone'?'Pierre':g.k==='mush'?'Champignon':g.k==='flower'?'Fleur':g.k==='wood'?'Bois':'Trouvaille','235,225,160');
     if(g.k==='shell'||g.k==='coin'||g.k==='rareshell'){const v=g.k==='rareshell'?10+((Math.random()*7)|0):g.k==='coin'?4+((Math.random()*5)|0):3+((Math.random()*4)|0);gold+=v;showGold();popText(g.x,g.y-8,'+'+v+' or','255,215,94')}
-    else{const id={stone:'r:pierre',mush:'r:champi',flower:'r:fleur',sprout:'r:pousse',wood:'r:bois'}[g.k],n=g.n||1;if(!spaceFor(id,n)){if(fullMsgT<=0)sayFull();return}lootRes(g.x,g.y,id,n)}
+    else{const id={stone:'r:pierre',mush:'r:champi',flower:'r:fleur',sprout:'r:pousse',wood:'r:bois'}[g.k],n=g.n||1;if(!spaceFor(id,n)){if(fullMsgT<=0)sayFull();return}lootRes(g.x,g.y,id,n);homeHarvestNotice(id,n)}
     is.ground.splice(i,1);if(AC)tone(980,.06,'sine',.04);return}
   if(tg.k==='garden'){openGarden();return}
   if(tg.k==='yard'){openShipyard();return}
@@ -4613,13 +4629,13 @@ function footAct(tg){const is=foot.is;
   if(tg.k==='store'){storeTap();return}
   if(tg.k==='oven'){ovenTap();return}
   if(tg.k==='fire'){audio();openFire();return}
-  if(tg.k==='plant'){const pl=tg.o;if(dayT-pl.at<DAY)return;if(treeGrow(pl)>=1){if(!spaceFor('r:fruit',2)){sayFull();return}lootRes(pl.x,pl.y,'r:fruit',2);pickTree(pl)}return}
+  if(tg.k==='plant'){const pl=tg.o;if(dayT-pl.at<DAY)return;if(treeGrow(pl)>=1){if(!spaceFor('r:fruit',2)){sayFull();return}lootRes(pl.x,pl.y,'r:fruit',2);homeHarvestNotice('r:fruit',2);pickTree(pl)}return}
   const tr=tg.o;
-  if((is.b===0||is.b===1)&&treeGrow(tr)>=1&&spaceFor('r:fruit',2)){lootRes(tr.x,tr.y,'r:fruit',2);pickTree(tr);tr.shk=1;if(AC)tone(760,.08,'sine',.05);return}
+  if((is.b===0||is.b===1)&&treeGrow(tr)>=1&&spaceFor('r:fruit',2)){lootRes(tr.x,tr.y,'r:fruit',2);homeHarvestNotice('r:fruit',2);pickTree(tr);tr.shk=1;if(AC)tone(760,.08,'sine',.05);return}
   foot.swing=.55;tr.shk=1;tr.hp--;tr.hitT=t;
   if(tr.hp>0&&tr.hp%2===0)popText(tr.x,tr.y-20,'Coup de hache · '+(TREE_HP-tr.hp)+'/'+TREE_HP,'249,216,167');
   if(AC)noise(.08,.1,1400);for(let k=0;k<6;k++)fx.push({x:tr.x+(Math.random()-.5)*8,y:tr.y+(Math.random()-.5)*8,vx:(Math.random()-.5)*60,vy:(Math.random()-.5)*60,life:.5,c:'201,146,90',r:2});
-  if(tr.hp<=0){tr.cut=dayT||.001;tr.fall=1;popText(tr.x,tr.y-28,'Arbre abattu !','248,220,162');const w=3+((Math.random()*3)|0);if(spaceFor('r:bois',w))lootRes(tr.x,tr.y,'r:bois',w);else{sayFull();(is.ground||(is.ground=[])).push({k:'wood',n:w,x:tr.x+(foot.x<tr.x?-10:10),y:tr.y+12,ph:Math.random()*6})}if(Math.random()<.35&&spaceFor('r:pousse',1))lootRes(tr.x,tr.y-14,'r:pousse',1);if(AC)noise(.4,.12,300)}
+  if(tr.hp<=0){tr.cut=dayT||.001;tr.fall=1;popText(tr.x,tr.y-28,'Arbre abattu !','248,220,162');const w=3+((Math.random()*3)|0);if(spaceFor('r:bois',w)){lootRes(tr.x,tr.y,'r:bois',w);homeHarvestNotice('r:bois',w)}else{sayFull();(is.ground||(is.ground=[])).push({k:'wood',n:w,x:tr.x+(foot.x<tr.x?-10:10),y:tr.y+12,ph:Math.random()*6})}if(Math.random()<.35&&spaceFor('r:pousse',1))lootRes(tr.x,tr.y-14,'r:pousse',1);if(AC)noise(.4,.12,300)}
   else foot.goal=tg}  // continue à couper tant qu'on ne bouge pas
 function footPlant(x,y){const is=foot.is;if(!resCount('r:pousse')){toast.textContent='Coupe des arbres pour obtenir des pousses à planter';toast.style.color='#ffe9b0';biomeBannerT=2;return}
   if(!inIsland(is,x,y,.8)||blocked(x,y,10)||footTargets().some(o=>o.k!=='ground'&&Math.hypot(o.x-x,o.y-y)<20)){toast.textContent='Pas de place ici pour planter';toast.style.color='#ffe9b0';biomeBannerT=1.6;return}
@@ -4923,7 +4939,8 @@ const POT=[{id:'r:ragout',name:'Ragoût de champignons',eff:'+25 % de dégâts p
   {id:'r:brochette',name:'Brochette du potager',eff:'+15 % de vitesse du bateau pendant 3 min',need:{'r:fruit':2,'r:herbe':1}},
   {id:'r:soupe',name:'Soupe de poisson',eff:'Répare 30 % de la coque',need:{fish:1,'r:herbe':1}},
   {id:'r:brochette',name:'Brochettes grillées',eff:'+15 % de vitesse du bateau pendant 3 min',need:{fish:2}},
-  {id:'r:infusion',name:'Infusion de fleurs',eff:'Pêche plus facile pendant 3 min (zone verte plus grande)',need:{'r:fleur':2,'r:fruit':1}}];
+  {id:'r:infusion',name:'Infusion de fleurs',eff:'Pêche plus facile pendant 3 min (zone verte plus grande)',need:{'r:fleur':2,'r:fruit':1}},
+  {id:'r:infusion',name:'Infusion du potager',eff:'Pêche plus facile pendant 3 min · recette alternative',need:{'r:herbe':2,'r:fruit':1}}];
 function commonFish(){return inv.filter(x=>x.id[0]==='f'&&SPECIES[spOf(x.id)].rar===0)}
 function potHave(k){return k==='fish'?commonFish().length:resCount(k)}
 const POT_NM={fish:['poisson commun','poissons communs'],'r:champi':['champignon','champignons'],'r:herbe':['herbe des marais','herbes des marais'],'r:fleur':['fleur','fleurs'],'r:fruit':['fruit','fruits']};
