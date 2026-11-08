@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="fr">
 <head>
-<title>Prototype Mer 2.1.3</title>
+<title>Prototype Mer 2.1.4</title>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -373,6 +373,19 @@ body.inmine .stats,body.inmine #help{display:none!important}body.inmine #toast{t
     <div class="ghead"><h2 id="mnTitle">La mine</h2><button id="mnClose" type="button" class="link">Fermer</button></div>
     <div id="mnNote" class="invnote"></div>
     <div id="mnBody" class="loglist"></div>
+  </div>
+</div>
+<div id="villageTalk" class="overlay" hidden>
+  <div class="card" role="dialog" aria-labelledby="villageTalkTitle">
+    <div class="ghead"><h2 id="villageTalkTitle">Habitant</h2><button id="villageTalkClose" type="button" class="link">Fermer</button></div>
+    <p id="villageTalkText" class="invnote"></p>
+    <button id="villageTalkAction" type="button" class="sell big">Voir les commandes</button>
+  </div>
+</div>
+<div id="shipyardEl" class="overlay" hidden>
+  <div class="card" role="dialog" aria-labelledby="shipyardTitle">
+    <div class="ghead"><h2 id="shipyardTitle">Chantier naval</h2><button id="shipyardClose" type="button" class="link">Fermer</button></div>
+    <div id="shipyardBody" class="loglist"></div>
   </div>
 </div>
 <div id="gardenEl" class="overlay" hidden>
@@ -3670,7 +3683,7 @@ const MARKET={x:HOME.x+HOME.r*.66,y:HOME.y,stalls:[
   gulls:[{x:HOME.x+HOME.r*.47,y:HOME.y-20,f:0},{x:HOME.x+HOME.r*.76,y:HOME.y+58,f:0}],scr:[]};
 const MK_WP=[[-.05,-.12],[.05,.1],[.14,-.02],[-.08,.05],[.1,-.18],[.08,.18]].map(([a,b])=>[HOME.x+HOME.r*(.66+a),HOME.y+HOME.r*b]);
 function fireSpot(){const a=Math.random()*Math.PI*2;return [CAMP.x+Math.cos(a)*30,CAMP.y+Math.sin(a)*26]}
-function updateMarket(dt){for(const f of MARKET.folk){f.ph+=dt;if(f.wait>0){f.wait-=dt;if(f.wait<=0){const w=FIRE.t>0&&Math.random()<.45?fireSpot():MK_WP[(Math.random()*MK_WP.length)|0];f.tx=w[0];f.ty=w[1]}continue}
+function updateMarket(dt){for(const [i,f] of MARKET.folk.entries()){f.ph+=dt;if(f.wait>0){f.wait-=dt;if(f.wait<=0){const w=darkness()>.65?[MARKET.x-17+i*7,MARKET.y+20+i*8]:FIRE.t>0&&Math.random()<.45?fireSpot():MK_WP[(Math.random()*MK_WP.length)|0];f.tx=w[0];f.ty=w[1]}continue}
     const dx=f.tx-f.x,dy=f.ty-f.y,d=Math.hypot(dx,dy);if(d<1.5){f.wait=1.5+Math.random()*3;continue}f.x+=dx/d*14*dt;f.y+=dy/d*14*dt;f.a=Math.atan2(dy,dx)}
   for(const g of MARKET.gulls){if(g.f>0)g.f-=dt;else if(Math.hypot(boat.x-g.x,boat.y-g.y)<60||Math.random()<dt*.05)g.f=1.2}}
 function drawIcon(k,x,y,r){ctx.save();ctx.translate(x,y);
@@ -4024,31 +4037,69 @@ const VH=(dx,dy)=>({x:HOME.x+dx*HOME_K,y:HOME.y+dy*HOME_K});
 const VILL={houses:[{...VH(-62,-42),a:.15,roof:['#b5533c','#8e3e2c']},{...VH(-62,68),a:-.2,roof:['#4f7aa8','#38597d']}],garden:VH(-18,-62),well:VH(-26,8),nets:VH(42,104),light:VH(-128,-18),yard:VH(-44,122),
   flags:[VH(-98,58),VH(70,-92),VH(-100,-70)],folk:[0,1].map(i=>({x:HOME.x-40,y:HOME.y+20*i,tx:0,ty:0,wait:i+1,col:['#6a8a3a','#8a4a8a'][i],ph:i}))};
 const V_WP=[VH(-40,-10),VH(-70,20),VH(-20,40),VH(-50,-70),VH(0,-20),VH(-90,30)].map(v=>[v.x,v.y]);
+function drawHomePaths(ox,oy){
+ // Chemins purement visuels : aucune modification des collisions ou des autres îles.
+ const road=(pts)=>{ctx.beginPath();pts.forEach((q,i)=>{const x=q.x+ox,y=q.y+oy;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)});
+   ctx.strokeStyle='rgba(89,62,30,.21)';ctx.lineWidth=15;ctx.lineJoin='round';ctx.lineCap='round';ctx.stroke();
+   ctx.strokeStyle='rgba(214,185,124,.8)';ctx.lineWidth=11;ctx.stroke();
+   ctx.strokeStyle='rgba(244,217,164,.4)';ctx.lineWidth=2;ctx.setLineDash([2,8]);ctx.stroke();ctx.setLineDash([])};
+ road([MARKET,VH(30,0),CAMP,VH(-12,-14),VILL.garden]);
+ road([CAMP,VH(-12,-26),MINE]);
+ if(vStage>=3)road([VILL.garden,VILL.well]);
+ if(vStage>=5)road([CAMP,VH(-35,58),VILL.yard]);
+ if(foot.on){ctx.save();ctx.font='800 9px Nunito,system-ui';ctx.textAlign='center';
+   for(const [x,y,label] of [[MARKET.x,MARKET.y+85,'MARCHÉ'],[CAMP.x,CAMP.y+44,'REPOS'],[MINE.x,MINE.y-37,'MINE'],[VILL.garden.x,VILL.garden.y-39,'CULTURES']]){
+    if(Math.hypot(foot.x-x,foot.y-y)>225)continue;
+    ctx.fillStyle='rgba(55,42,24,.84)';ctx.fillRect(x+ox-26,y+oy-9,52,14);
+    ctx.fillStyle='#fff1cb';ctx.fillText(label,x+ox,y+oy+1)}
+   ctx.restore()}
+}
 // Trois plates-bandes existantes du village, sans ressource ni monde supplémentaire.
-const HOME_GARDEN=[{at:0},{at:0},{at:0}];
+const HOME_GARDEN=[{at:0,type:'fruit',water:false},{at:0,type:'fruit',water:false},{at:0,type:'fruit',water:false}];
+const HOME_CROPS={
+ fruit:{id:'r:fruit',name:'Fruits',time:180,gain:3,bonus:'r:herbe',bonusN:1},
+ flower:{id:'r:fleur',name:'Fleurs',time:210,gain:3},
+ herb:{id:'r:herbe',name:'Herbes',time:240,gain:3}
+};
+function gardenDuration(p){
+ const crop=HOME_CROPS[p.type]||HOME_CROPS.fruit;
+ const seasonal=season()===0?.9:season()===3?1.18:1;
+ return Math.ceil(crop.time*seasonal*(p.water?.8:1));
+}
+function gardenReady(p){return p.at>0&&dayT-p.at>=gardenDuration(p)}
+function gardenCanHarvest(p){
+ const c=HOME_CROPS[p.type]||HOME_CROPS.fruit,list=inv.map(x=>({...x}));
+ return putIn(list,INV.slots,{id:c.id,n:c.gain})===0&&(!c.bonus||putIn(list,INV.slots,{id:c.bonus,n:c.bonusN})===0);
+}
+function gardenHarvest(p){
+ if(!gardenReady(p)||!gardenCanHarvest(p))return;
+ const c=HOME_CROPS[p.type]||HOME_CROPS.fruit;
+ addRes(c.id,c.gain);if(c.bonus)addRes(c.bonus,c.bonusN);
+ p.at=0;p.water=false;
+ popText(VILL.garden.x,VILL.garden.y-18,'Récolte : '+c.name,'180,235,140');
+ if(AC)tone(760,.12,'triangle',.05);saveGame();renderGarden();
+}
 function homeGardenStatus(){
- const ready=HOME_GARDEN.filter(p=>p.at&&dayT-p.at>=180).length;
- const growing=HOME_GARDEN.filter(p=>p.at&&dayT-p.at<180).length;
- return ready?'🌿 '+ready+' récolte'+(ready>1?'s':'')+' prête'+(ready>1?'s':''):growing?growing+' parcelle'+(growing>1?'s':'')+' en croissance':'3 parcelles libres';
+ const ready=HOME_GARDEN.filter(gardenReady).length,growing=HOME_GARDEN.filter(p=>p.at&&!gardenReady(p)).length;
+ return ready?'🌿 '+ready+' récolte(s) prête(s)':growing?growing+' parcelle(s) en croissance':'3 parcelles libres';
 }
 function renderGarden(){
  const body=document.getElementById('gardenBody');body.innerHTML='';
  const summary=document.createElement('div');summary.className='homeHint';summary.textContent=homeGardenStatus();body.appendChild(summary);
- document.getElementById('gardenNote').textContent='Le potager ouvre avec les premières maisons du village. 1 fruit semé par parcelle, environ 3 minutes de croissance.';
+ document.getElementById('gardenNote').textContent='Trois parcelles · fruits, fleurs et herbes · arrosage gratuit une fois par culture. Saisons et eau modifient la croissance.';
  HOME_GARDEN.forEach((p,i)=>{
-  const remain=p.at?Math.max(0,Math.ceil(180-(dayT-p.at))):0;
-  const label='Parcelle '+(i+1);
+  const crop=HOME_CROPS[p.type]||HOME_CROPS.fruit,label='Parcelle '+(i+1);
   if(!p.at){
-   body.appendChild(shopRow(label,'Terre disponible · fruits dans ta cale : '+resCount('r:fruit'),
-     shopBtn('Planter · 1 fruit',resCount('r:fruit')>=1,()=>{removeRes('r:fruit',1);p.at=dayT||.001;popText(VILL.garden.x,VILL.garden.y-18,'Semis planté','150,220,120');saveGame();renderGarden()})));
-  }else if(remain){
-   body.appendChild(shopRow(label,'Culture en croissance · encore '+Math.ceil(remain/60)+' min environ',null,'En croissance'));
+   for(const [type,c] of Object.entries(HOME_CROPS))
+    body.appendChild(shopRow(label+' · '+c.name,'Planter 1 '+RES[c.id].name.toLowerCase()+' · '+Math.ceil(c.time/60)+' à '+Math.ceil(c.time*1.18/60)+' min selon saison',
+     shopBtn('Planter',resCount(c.id)>=1,()=>{removeRes(c.id,1);p.type=type;p.at=dayT||.001;p.water=false;saveGame();renderGarden()})));
+  }else if(!gardenReady(p)){
+   const remain=Math.max(1,Math.ceil(gardenDuration(p)-(dayT-p.at)));
+   body.appendChild(shopRow(label+' · '+crop.name,'Encore '+Math.ceil(remain/60)+' min environ · '+(p.water?'arrosée':'sans arrosage'),
+    p.water?null:shopBtn('Arroser',true,()=>{p.water=true;saveGame();renderGarden()}),p.water?'Croissance accélérée':''));
   }else{
-   body.appendChild(shopRow(label,'Récolte prête : 3 fruits et 1 herbe',
-     shopBtn('Récolter',spaceFor('r:fruit',3)&&spaceFor('r:herbe',1),()=>{
-      addRes('r:fruit',3);addRes('r:herbe',1);p.at=0;
-      popText(VILL.garden.x,VILL.garden.y-18,'+3 fruits · +1 herbe','180,235,140');if(AC)tone(760,.12,'triangle',.05);saveGame();renderGarden()
-     }),spaceFor('r:fruit',3)&&spaceFor('r:herbe',1)?'':'Cale pleine'));
+   body.appendChild(shopRow(label+' · '+crop.name,'Récolte : '+crop.gain+' '+crop.name.toLowerCase()+(crop.bonus?' + 1 herbe':''),
+    shopBtn('Récolter',gardenCanHarvest(p),()=>gardenHarvest(p)),gardenCanHarvest(p)?'Prêt':'Libère de la place dans la cale'));
   }
  });
 }
@@ -4066,24 +4117,66 @@ function drawHouse(h,X,Y,big){ctx.save();ctx.translate(X,Y);ctx.rotate(h.a);
   ctx.fillStyle='#8a5a33';ctx.fillRect(-3,12,6,3);
   if(darkness()>.3){ctx.fillStyle='#ffd36a';ctx.fillRect(-11,12,3,2);ctx.fillRect(8,12,3,2)}
   ctx.restore();if(Math.random()<.04)fx.push({x:h.x+8,y:h.y-7,vx:3,vy:-10,life:1.8,c:'200,195,190',r:2.5,grow:1,a:.3})}
-function updateVillageLife(dt){if(vStage<3)return;for(const f of VILL.folk){f.ph+=dt;if(f.wait>0){f.wait-=dt;if(f.wait<=0){const w=FIRE.t>0&&Math.random()<.45?fireSpot():V_WP[(Math.random()*V_WP.length)|0];f.tx=w[0];f.ty=w[1]}continue}
+function updateVillageLife(dt){if(vStage<3)return;for(const [i,f] of VILL.folk.entries()){f.ph+=dt;if(f.wait>0){f.wait-=dt;if(f.wait<=0){const w=darkness()>.65?[VILL.houses[i].x+18,VILL.houses[i].y+18]:FIRE.t>0&&Math.random()<.45?fireSpot():V_WP[(Math.random()*V_WP.length)|0];f.tx=w[0];f.ty=w[1]}continue}
   const dx=f.tx-f.x,dy=f.ty-f.y,d=Math.hypot(dx,dy);if(d<1.5){f.wait=2+Math.random()*4;continue}f.x+=dx/d*12*dt;f.y+=dy/d*12*dt;f.a=Math.atan2(dy,dx)}}
+const villageTalkEl=document.getElementById('villageTalk');
+let villageTalkFrom='Marchande';
+function openVillageTalk(who){
+ villageTalkFrom=who||'Habitant';
+ document.getElementById('villageTalkTitle').textContent=villageTalkFrom;
+ const lines={
+  'Marchande':'Les commandes du village changent chaque jour. Les récoltes peuvent te rapporter davantage que la vente ordinaire.',
+  'Charpentier':'Rassemble du bois et du fer. Les améliorations du navire t’aideront lors de tes prochaines expéditions.',
+  'Pêcheur':'Les poissons et les fruits font vivre le port. Regarde les commandes avant de vendre tes trouvailles.',
+  'Jardinière':'Arrose une culture une fois pour accélérer sa pousse. Les saisons jouent aussi sur la croissance.',
+  'Habitant du port':'Le village s’anime au lever du jour et se repose à la nuit. Le chantier naval ouvre quand le port grandit.'
+ };
+ document.getElementById('villageTalkText').textContent=lines[villageTalkFrom]||'Bienvenue au port !';
+ const action=document.getElementById('villageTalkAction');
+ action.textContent=villageTalkFrom==='Jardinière'?'Voir le potager':villageTalkFrom==='Charpentier'?'Voir l’atelier':'Voir les commandes';
+ villageTalkEl.hidden=false;paused=true;touch=null;
+}
+document.getElementById('villageTalkClose').addEventListener('click',()=>{villageTalkEl.hidden=true;paused=false});
+document.getElementById('villageTalkAction').addEventListener('click',()=>{
+ villageTalkEl.hidden=true;paused=false;
+ if(villageTalkFrom==='Jardinière')openGarden();
+ else if(villageTalkFrom==='Charpentier')openShop('atelier');
+ else{shopSub='vendre';openShop('shop')}
+});
+villageTalkEl.addEventListener('pointerdown',e=>e.stopPropagation());
+function openShipyard(){
+ if(vStage<5||!foot.on||!foot.is.home)return;
+ const body=document.getElementById('shipyardBody');body.innerHTML='';
+ const pct=Math.round(hp/hpMax()*100);
+ body.appendChild(shopRow('Inspection de la coque','Intégrité : '+pct+' % · '+(hp<hpMax()?'Réparation disponible':'Prête pour le départ'),
+  hp<hpMax()?shopBtn('Réparer · '+repairCost()+' or',gold>=repairCost(),()=>{
+   const cost=repairCost();if(gold<cost)return;gold-=cost;hp=hpMax();showHp();saveGame();openShipyard()
+  }):null,pct===100?'Coque en état':''));
+ for(const k of ['coque','voile','canon','cale'])
+  body.appendChild(shopRow(PARTS_INFO[k].name+' · niveau '+PART[k],PARTS_INFO[k].eff(PART[k]),null,'Installé'));
+ body.appendChild(shopRow('Préparer la prochaine sortie','Accéder aux améliorations et à l’équipement du comptoir.',
+  shopBtn('Améliorer le navire',true,()=>{document.getElementById('shipyardEl').hidden=true;paused=false;shopSub='amel';openShop('shop')})));
+ document.getElementById('shipyardEl').hidden=false;paused=true;touch=null;
+}
+document.getElementById('shipyardClose').addEventListener('click',()=>{document.getElementById('shipyardEl').hidden=true;paused=false;saveGame()});
+document.getElementById('shipyardEl').addEventListener('pointerdown',e=>e.stopPropagation());
 function drawVillage(ox,oy){if(vStage<2)return;const X0=HOME.x+ox,Y0=HOME.y+oy;if(X0<-260||X0>W+260||Y0<-260||Y0>H+260)return;
   const P=v=>[v.x+ox,v.y+oy];
+  drawHomePaths(ox,oy);
   // étape 2 : maisons et potager
   {const [x,y]=P(VILL.garden);ctx.fillStyle='rgba(0,0,0,.15)';ctx.fillRect(x-15,y-10,32,22);ctx.fillStyle='#7a5434';ctx.fillRect(x-16,y-11,32,22);
     for(let r=0;r<4;r++){ctx.fillStyle='#5a3c22';ctx.fillRect(x-14,y-9+r*5.5,28,2);for(let c=0;c<6;c++){ctx.fillStyle=r%2?'#6fb34a':'#4f9a3a';ctx.beginPath();ctx.arc(x-12+c*5,y-8+r*5.5,1.8,0,7);ctx.fill();if(r===1&&c%2)ctx.fillStyle='#e8892a',ctx.fillRect(x-12.5+c*5,y-6.5+r*5.5,1.2,1.6)}}
     // 3 plates-bandes : sol nu, plant en pousse ou culture mature.
     for(let i=0;i<3;i++){const px=x-10+i*10,at=HOME_GARDEN[i].at;
       if(!at)continue;
-      const ripe=dayT-at>=180;
-      ctx.fillStyle=ripe?'#e89945':'#7abe52';
+      const ripe=gardenReady(HOME_GARDEN[i]);
+      ctx.fillStyle=ripe?(HOME_GARDEN[i].type==='flower'?'#e98ab6':HOME_GARDEN[i].type==='herb'?'#7dd294':'#e89945'):'#7abe52';
       const wob=Math.sin(t*2+i)*.6;
       ctx.beginPath();ctx.ellipse(px, y-2+wob,ripe?3.8:2.4,ripe?3.4:2.6,0,0,Math.PI*2);ctx.fill();
       if(ripe){ctx.fillStyle='#ffca56';ctx.beginPath();ctx.arc(px-1.6,y-3,1.2,0,7);ctx.arc(px+1.8,y-2,1.2,0,7);ctx.fill()}
     }
     ctx.strokeStyle='#a8713d';ctx.lineWidth=1.2;ctx.strokeRect(x-17,y-12,34,24);
-    if(foot.on){const ready=HOME_GARDEN.some(p=>p.at&&dayT-p.at>=180);ctx.fillStyle=ready?'rgba(52,112,45,.91)':'rgba(6,40,56,.82)';ctx.beginPath();ctx.roundRect(x-22,y-27,44,12,5);ctx.fill();ctx.fillStyle='#fff4d7';ctx.font='800 8px Nunito,system-ui';ctx.textAlign='center';ctx.fillText(ready?'À RÉCOLTER':'POTAGER',x,y-19)}}
+    if(foot.on){const ready=HOME_GARDEN.some(gardenReady);ctx.fillStyle=ready?'rgba(52,112,45,.91)':'rgba(6,40,56,.82)';ctx.beginPath();ctx.roundRect(x-22,y-27,44,12,5);ctx.fill();ctx.fillStyle='#fff4d7';ctx.font='800 8px Nunito,system-ui';ctx.textAlign='center';ctx.fillText(ready?'À RÉCOLTER':'POTAGER',x,y-19)}}
 
   for(const h of VILL.houses){const [x,y]=P(h);drawHouse(h,x,y)}
   // étape 3 : puits, filets, villageois
@@ -4105,6 +4198,7 @@ function drawVillage(ox,oy){if(vStage<2)return;const X0=HOME.x+ox,Y0=HOME.y+oy;i
     ctx.strokeStyle='#7a5530';ctx.lineWidth=1.5;for(const sd of [-1,1]){ctx.beginPath();ctx.moveTo(x+sd*14,y-24);ctx.lineTo(x+sd*14,y+22);ctx.stroke()}
     ctx.beginPath();ctx.moveTo(x-14,y-10);ctx.lineTo(x+14,y-10);ctx.moveTo(x-14,y+8);ctx.lineTo(x+14,y+8);ctx.stroke();
     ctx.strokeStyle='#6b4423';ctx.lineWidth=2.4;ctx.beginPath();ctx.moveTo(x+22,y-30);ctx.lineTo(x+6,y-6);ctx.stroke();ctx.strokeStyle='rgba(60,40,20,.7)';ctx.lineWidth=.8;ctx.beginPath();ctx.moveTo(x+6,y-6);ctx.lineTo(x+6,y+2+Math.sin(t*2)*2);ctx.stroke();
+    if(foot.on){ctx.fillStyle='rgba(6,40,56,.9)';ctx.beginPath();ctx.roundRect(x-40,y-43,80,14,5);ctx.fill();ctx.fillStyle='#fff4d7';ctx.font='800 9px Nunito,system-ui';ctx.textAlign='center';ctx.fillText('CHANTIER NAVAL',x,y-33)}
     ctx.fillStyle='#c9925a';ctx.fillRect(x+20,y+6,10,3);ctx.fillRect(x+20,y+10,10,3);ctx.fillRect(x+21,y+14,8,3);
     const cols=['#e04a3c','#ffd75e','#2a6fb0'];VILL.flags.forEach((f,i)=>{const [fx2,fy2]=P(f);ctx.fillStyle='#5a3a20';ctx.beginPath();ctx.arc(fx2,fy2,2.2,0,7);ctx.fill();
       ctx.fillStyle=cols[i%3];ctx.beginPath();ctx.moveTo(fx2,fy2-1.5);for(let k=0;k<=5;k++)ctx.lineTo(fx2+k*2.4,fy2-1.5+Math.sin(t*8-k)*1.2);for(let k=5;k>=0;k--)ctx.lineTo(fx2+k*2.4,fy2+2.5+Math.sin(t*8-k)*1.2);ctx.fill()})}}
@@ -4496,13 +4590,15 @@ function disembark(is){wantCard('etals');document.body.classList.add('onfoot');c
   if(crew.playing>0){crew.playing=0;stopShanty()}foot.land={x:foot.x,y:foot.y};foot.goal=null;
   boat.vx=boat.vy=0;crew.st='foot';ensureTrees(is);if(!is.planted)is.planted=[];spawnGround(is);wantCard('iles');if(AC)tone(520,.08,'sine',.05)}
 function embark(){document.body.classList.remove('onfoot');foot.on=false;PRINTS.length=0;foot.lpx=undefined;foot.goal=null;crew.st='boat';crew.dock=-99;if(AC)tone(620,.08,'sine',.05);saveGame()}
-function footTargets(){const is=foot.is,out=[];if(is.home){out.push({k:'fire',x:CAMP.x,y:CAMP.y});out.push({k:'store',x:STORE_POS.x,y:STORE_POS.y});out.push({k:'oven',x:OVEN_POS.x,y:OVEN_POS.y});if(vStage>=2)out.push({k:'garden',x:VILL.garden.x,y:VILL.garden.y})}for(const tr of is.trees||[])if(treeAlive(tr))out.push({k:'tree',o:tr,x:tr.x,y:tr.y});for(const pl of is.planted||[])out.push({k:'plant',o:pl,x:pl.x,y:pl.y});for(const g of is.ground||[])out.push({k:'ground',o:g,x:g.x,y:g.y});return out}
+function footTargets(){const is=foot.is,out=[];if(is.home){out.push({k:'fire',x:CAMP.x,y:CAMP.y});out.push({k:'store',x:STORE_POS.x,y:STORE_POS.y});out.push({k:'oven',x:OVEN_POS.x,y:OVEN_POS.y});if(vStage>=2)out.push({k:'garden',x:VILL.garden.x,y:VILL.garden.y});if(vStage>=5)out.push({k:'yard',x:VILL.yard.x,y:VILL.yard.y})}for(const tr of is.trees||[])if(treeAlive(tr))out.push({k:'tree',o:tr,x:tr.x,y:tr.y});for(const pl of is.planted||[])out.push({k:'plant',o:pl,x:pl.x,y:pl.y});for(const g of is.ground||[])out.push({k:'ground',o:g,x:g.x,y:g.y});return out}
 function footAct(tg){const is=foot.is;
   if(tg.k==='ground'){const g=tg.o,i=is.ground.indexOf(g);if(i<0)return;
     if(g.k==='shell'||g.k==='coin'||g.k==='rareshell'){const v=g.k==='rareshell'?10+((Math.random()*7)|0):g.k==='coin'?4+((Math.random()*5)|0):3+((Math.random()*4)|0);gold+=v;showGold();popText(g.x,g.y-8,'+'+v+' or','255,215,94')}
     else{const id={stone:'r:pierre',mush:'r:champi',flower:'r:fleur',sprout:'r:pousse',wood:'r:bois'}[g.k],n=g.n||1;if(!spaceFor(id,n)){if(fullMsgT<=0)sayFull();return}lootRes(g.x,g.y,id,n)}
     is.ground.splice(i,1);if(AC)tone(980,.06,'sine',.04);return}
   if(tg.k==='garden'){openGarden();return}
+  if(tg.k==='yard'){openShipyard();return}
+  if(tg.k==='npc'){openVillageTalk(tg.who);return}
   if(tg.k==='store'){storeTap();return}
   if(tg.k==='oven'){ovenTap();return}
   if(tg.k==='fire'){audio();openFire();return}
@@ -4519,7 +4615,7 @@ function footPlant(x,y){const is=foot.is;if(!resCount('r:pousse')){toast.textCon
   removeRes('r:pousse',1);is.planted.push({x,y,at:dayT,ripeAt:dayT+DAY});popText(x,y-10,'Pousse plantée','140,220,110');if(AC)tone(660,.1,'triangle',.05)}
 function footStep(dt){const is=foot.is;foot.swing=Math.max(0,foot.swing-dt);for(const tr of is.trees||[]){tr.shk=Math.max(0,tr.shk-dt*3);tr.fall=Math.max(0,tr.fall-dt*1.6)}
   let mx=0,my=0;if(touch){const dx=touch.x-touch.ox,dy=touch.y-touch.oy,d=Math.hypot(dx,dy);if(d>10){mx=dx/d*Math.min(1,(d-10)/60);my=dy/d*Math.min(1,(d-10)/60);foot.goal=null}}
-  if(foot.goal&&foot.swing<=0){const g=foot.goal,d=Math.hypot(g.x-foot.x,g.y-foot.y),reach=g.k==='tree'?16:(g.k==='stall'||g.k==='mine')?14:(g.k==='store'||g.k==='oven')?20:g.k==='fire'?28:g.k==='garden'?36:10;
+  if(foot.goal&&foot.swing<=0){const g=foot.goal,d=Math.hypot(g.x-foot.x,g.y-foot.y),reach=g.k==='tree'?16:(g.k==='stall'||g.k==='mine')?14:(g.k==='store'||g.k==='oven')?20:g.k==='fire'?28:g.k==='garden'?36:g.k==='yard'?34:g.k==='npc'?24:10;
     if(d<=reach){foot.goal=null;if(g.k==='plantAt')footPlant(g.x,g.y);else if(g.k==='embark')embark();else if(g.k==='stall'){audio();openShop(g.stall)}else if(g.k==='mine'){audio();openMineMenu()}else footAct(g)}else{const rt=routeTo(g),dd=Math.hypot(rt.x-foot.x,rt.y-foot.y)||1;mx=(rt.x-foot.x)/dd;my=(rt.y-foot.y)/dd}}
   if(!foot.on)return;
   const sp=88,nx=foot.x+mx*sp*dt,ny=foot.y+my*sp*dt;foot.moving=!!(mx||my);if(mx||my){foot.a=Math.atan2(my,mx);foot.walk+=dt*12}
@@ -4541,8 +4637,14 @@ function footTap(e){const z=zoomCur,wx2=e.clientX/z-lastOX,wy2=e.clientY/z-lastO
    const points=[{k:'garden',x:VILL.garden.x,y:VILL.garden.y,on:vStage>=2,r:30},
     {k:'fire',x:CAMP.x,y:CAMP.y,on:true,r:31},
     {k:'store',x:STORE_POS.x,y:STORE_POS.y,on:true,r:26},
-    {k:'oven',x:OVEN_POS.x,y:OVEN_POS.y,on:true,r:26}];
+    {k:'oven',x:OVEN_POS.x,y:OVEN_POS.y,on:true,r:26},
+    {k:'yard',x:VILL.yard.x,y:VILL.yard.y,on:vStage>=5,r:31}];
    for(const p of points){if(p.on&&Math.hypot(wx2-p.x,wy2-p.y)<p.r){foot.goal={k:p.k,x:p.x,y:p.y};return false}}
+  }
+  if(foot.is.home){
+    const villagers=[...MARKET.folk.map((p,i)=>({p,name:['Marchande','Charpentier','Pêcheur'][i],kind:'merchant'})),
+      ...(vStage>=3?VILL.folk.map((p,i)=>({p,name:['Jardinière','Habitant du port'][i],kind:'village'})):[])];
+    for(const v of villagers)if(Math.hypot(wx2-v.p.x,wy2-v.p.y)<19){foot.goal={k:'npc',who:v.name,x:v.p.x,y:v.p.y};return false}
   }
   let best=null,bk=1;for(const o of footTargets()){const d=Math.hypot(o.x-wx2,o.y-wy2);let k=d/(foot.is.home&&o.k==='ground'?30:22);
     if(o.k==='tree'){const tr=o.o,ci=foot.is.trees.indexOf(tr),c0=foot.is.crowns[ci]||[],s0=tr.s0||1;k=d/Math.max(22,32*s0); // toute la palme
@@ -5334,6 +5436,7 @@ function renderShop(){if(shopTab==='atelier'){renderAtelier();return}shopBody.in
   h('Outils');for(let i=1;i<PICKS.length;i++){const P=PICKS[i],pr=P.price;if(MX.pick>=i){shopBody.appendChild(shopRow(P.name,i===1?'Casse les rochers 1,5 fois plus vite.':'Casse les rochers deux fois plus vite.',null,MX.pick===i?'Équipée':'Remplacée'));continue}
     const ok=MX.pick===i-1&&gold>=pr.g&&resCount('r:lingot')>=pr.li&&(!pr.ru||resCount('r:rubis')>=pr.ru);shopBody.appendChild(shopRow(P.name,i===1?'Casse les rochers 1,5 fois plus vite.':'Casse les rochers deux fois plus vite.',shopBtn('Acheter',ok,()=>{gold-=pr.g;removeRes('r:lingot',pr.li);if(pr.ru)removeRes('r:rubis',pr.ru);MX.pick=i;buyFx();saveGame()}),pr.g+' or + '+pr.li+' lingots'+(pr.ru?' + '+pr.ru+' rubis':'')+(MX.pick<i-1?' · achète d’abord la pioche de fer':'')))}
   h('Ton île');
+  shopBody.appendChild(shopRow('Chantier naval',vStage>=5?'Ouvert sur l’île : inspection de la coque et préparation des sorties.':'Se débloque lorsque ton village atteint l’étape 5.',null,vStage>=5?'Ouvert':'À développer'));
   {const ok=resCount('r:pierre')>=PIER_COST.p&&resCount('r:bois')>=PIER_COST.b;shopBody.appendChild(PIER.strong?shopRow('Ponton renforcé','Quand le bateau est amarré, sa coque se répare toute seule, doucement.',null,'Construit'):
     shopRow('Ponton renforcé','Piliers en pierre : amarré au ponton, le bateau se répare tout seul, doucement.',shopBtn('Construire',ok,()=>{removeRes('r:pierre',PIER_COST.p);removeRes('r:bois',PIER_COST.b);PIER.strong=true;buyFx();saveGame()}),'Coût : '+PIER_COST.p+' pierres + '+PIER_COST.b+' bois · tu as '+resCount('r:pierre')+' pierres et '+resCount('r:bois')+' bois'))}
   h('Cannes');
@@ -5778,6 +5881,8 @@ function validSave(d){
   for(const k of ['chests','orbs'])if(d[k]&&d[k].some(x=>!x||!Number.isFinite(x.x)||!Number.isFinite(x.y)||Math.abs(x.x)>1e7||Math.abs(x.y)>1e7))return false;
   if(d.fog!==undefined&&(typeof d.fog!=='string'||d.fog.length>100000))return false;
   if(d.garden!==undefined&&(!Array.isArray(d.garden)||d.garden.length!==3||d.garden.some(v=>!Number.isFinite(v)||v<0||v>1e10)))return false;
+  if(d.gardenTypes!==undefined&&(!Array.isArray(d.gardenTypes)||d.gardenTypes.length!==3||d.gardenTypes.some(v=>!['fruit','flower','herb'].includes(v))))return false;
+  if(d.gardenWater!==undefined&&(!Array.isArray(d.gardenWater)||d.gardenWater.length!==3||d.gardenWater.some(v=>typeof v!=='boolean')))return false;
   if(d.campLevel!==undefined&&(!Number.isInteger(d.campLevel)||d.campLevel<0||d.campLevel>2))return false;
   if(d.homeOrders!==undefined&&(!d.homeOrders||typeof d.homeOrders!=='object'||!Number.isInteger(d.homeOrders.day)||d.homeOrders.day< -1||d.homeOrders.day>1e8||!Array.isArray(d.homeOrders.done)||d.homeOrders.done.length>2||d.homeOrders.done.some(x=>typeof x!=='string'||x.length>40)))return false;
   return true;
@@ -5787,7 +5892,7 @@ function saveGame(){try{
   const atHome=sinking||hp<=0;
   const next=JSON.stringify({v:SAVE_VERSION,world:3,level,xp,flevel,fxpVal,
     hp:atHome?hpMax():hp,parts:PART,boat:atHome?{x:DOCK.x+34,y:DOCK.y,a:0}:{x:boat.x,y:boat.y,a:boat.a},
-    chests:chests.map(c=>({x:c.x,y:c.y,r:c.r,ph:c.ph,keep:!!c.keep})),rocks:ROCKS.map(r=>({a:r.alive,hp:r.hp})),orbs:orbs.map(o=>({x:o.x,y:o.y,v:o.v,ph:o.ph})),inv,flog,gold,rod:rodIdx,bait:baitSel,pt:Math.round(CALM.pt),fire:Math.round(FIRE.t),bs:Math.round(BUFF.speed),bf:Math.round(BUFF.fish),lm:{f:Object.keys(LM.found),t:Object.keys(LM.titles)},oven:OVEN.built,pier:PIER.strong,mine:{d:MX.deep,p:MX.pick,f:Object.keys(MX.fos),t:MX.fosTitle},buff:Math.round(BUFF.ragout),slots:INV.slots,dayT,lastCampRest,garden:HOME_GARDEN.map(p=>p.at),campLevel,homeOrders:HOME_ORDERS,wx:wx.cur,fog:fogToStr(),kseen:krakenSeen,bseen,bkill,tmap:tmap?{x:tmap.x,y:tmap.y,isl:tmap.isl}:null,daily,look,owned,unlocks,vStage,isl3:islSave(),odd:ODD_SEEN,store:STORE,rumor:RUMOR,evt:{k:EVT.k,end:EVT.end,next:EVT.next,fs:EVT.freeSpin},baitSel,baitInit,carry,iev:IEV?{type:IEV.type,isl:islands.indexOf(IEV.is),a:IEV.a,bx:IEV.bx,by:IEV.by,wx:IEV.wx,wy:IEV.wy,T:IEV.T,mu:IEV.mu,sold:!!IEV.sold,pir:IEV.pir?IEV.pir.map(q=>q.hp):null}:null});
+    chests:chests.map(c=>({x:c.x,y:c.y,r:c.r,ph:c.ph,keep:!!c.keep})),rocks:ROCKS.map(r=>({a:r.alive,hp:r.hp})),orbs:orbs.map(o=>({x:o.x,y:o.y,v:o.v,ph:o.ph})),inv,flog,gold,rod:rodIdx,bait:baitSel,pt:Math.round(CALM.pt),fire:Math.round(FIRE.t),bs:Math.round(BUFF.speed),bf:Math.round(BUFF.fish),lm:{f:Object.keys(LM.found),t:Object.keys(LM.titles)},oven:OVEN.built,pier:PIER.strong,mine:{d:MX.deep,p:MX.pick,f:Object.keys(MX.fos),t:MX.fosTitle},buff:Math.round(BUFF.ragout),slots:INV.slots,dayT,lastCampRest,garden:HOME_GARDEN.map(p=>p.at),gardenTypes:HOME_GARDEN.map(p=>p.type),gardenWater:HOME_GARDEN.map(p=>p.water),campLevel,homeOrders:HOME_ORDERS,wx:wx.cur,fog:fogToStr(),kseen:krakenSeen,bseen,bkill,tmap:tmap?{x:tmap.x,y:tmap.y,isl:tmap.isl}:null,daily,look,owned,unlocks,vStage,isl3:islSave(),odd:ODD_SEEN,store:STORE,rumor:RUMOR,evt:{k:EVT.k,end:EVT.end,next:EVT.next,fs:EVT.freeSpin},baitSel,baitInit,carry,iev:IEV?{type:IEV.type,isl:islands.indexOf(IEV.is),a:IEV.a,bx:IEV.bx,by:IEV.by,wx:IEV.wx,wy:IEV.wy,T:IEV.T,mu:IEV.mu,sold:!!IEV.sold,pir:IEV.pir?IEV.pir.map(q=>q.hp):null}:null});
   if(!readSave(next))return;
   const previous=localStorage.getItem(SAVE_KEY);
   if(previous&&readSave(previous))localStorage.setItem(SAVE_BACKUP,previous);
@@ -5813,7 +5918,9 @@ function loadGame(){let d=getSavedGame();
   setTimeout(()=>{hp=Math.max(1,Math.min(hpMax(),hp));showHp()},0);
   if(typeof d.fog==='string'&&sameWorld)fogFromStr(d.fog);krakenSeen=!!d.kseen&&sameWorld;
   if(typeof d.dayT==='number')dayT=d.dayT;
-  if(Array.isArray(d.garden)&&d.garden.length===3)d.garden.forEach((at,i)=>{HOME_GARDEN[i].at=Math.max(0,Math.min(dayT+180,+at||0))});
+  if(Array.isArray(d.garden)&&d.garden.length===3)d.garden.forEach((at,i)=>{HOME_GARDEN[i].at=Math.max(0,Math.min(dayT+300,+at||0))});
+  if(Array.isArray(d.gardenTypes)&&d.gardenTypes.length===3)d.gardenTypes.forEach((type,i)=>{if(HOME_CROPS[type])HOME_GARDEN[i].type=type});
+  if(Array.isArray(d.gardenWater)&&d.gardenWater.length===3)d.gardenWater.forEach((w,i)=>{HOME_GARDEN[i].water=w===true});
   if(typeof d.lastCampRest==='number')lastCampRest=d.lastCampRest;
   if(typeof d.campLevel==='number')campLevel=Math.max(0,Math.min(2,d.campLevel|0));
   if(d.homeOrders&&typeof d.homeOrders==='object'){
