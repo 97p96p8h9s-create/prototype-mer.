@@ -3262,8 +3262,8 @@ let invSel=-1;
 function darker(c){return 'rgb('+c.split(',').map(v=>Math.round(v*.6)).join(',')+')'}
 function renderInv(){
   const resources=inv.filter(it=>it.id.startsWith('r:')).reduce((n,it)=>n+it.n,0);
-  const fishes=inv.filter(it=>it.id.startsWith('f:')).length;
-  invCount.textContent=inv.length+' / '+INV.slots+' places · '+resources+' ressources · '+fishes+' poissons';
+  const fishCount=inv.filter(it=>it.id.startsWith('f:')).length;
+  invCount.textContent=inv.length+' / '+INV.slots+' places · '+resources+' ressources · '+fishCount+' poissons';
   invGrid.innerHTML='';
   for(let i=0;i<INV.slots;i++){const b=document.createElement('button');b.type='button';b.className='slot';
     const it=inv[i];
