@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="fr">
 <head>
-<title>Prototype Mer 2.1.5</title>
+<title>Prototype Mer 2.1.6</title>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -187,6 +187,13 @@ body.inmine .stats,body.inmine #help{display:none!important}body.inmine #toast{t
 #bossBar .bb{height:8px;border-radius:99px;background:rgba(255,255,255,.18);overflow:hidden;margin-top:4px}#bossBar .bb i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#e8503a,#ff9a5a);transition:width .15s}
 #bossBar.rage{box-shadow:0 0 12px rgba(232,80,58,.8)}#bossBar.rage span{color:#ffb39a}
 
+/* 2.1.6 - ergonomie tactile en portrait */
+@media (pointer:coarse) and (orientation:portrait){
+#store .card,#gardenEl .card,#fireEl .card,#shop .card,#shipyardEl .card,#villageTalk .card{max-height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 20px);overflow-y:auto;overscroll-behavior:contain}
+#store button,#gardenEl button,#fireEl button,#shop button,#shipyardEl button,#villageTalk button{min-height:44px;touch-action:manipulation}
+#store .duo{flex-wrap:wrap}#store .duo button{min-width:125px}
+}
+@media (max-width:390px) and (pointer:coarse){.shoprow{padding:9px;gap:8px}.shoprow>div{flex-basis:120px}}
 /* 2.0.9 — hiérarchie graphique des ressources, inventaire et commerçants */
 #shopBody .merchantHint{background:rgba(255,248,220,.68);border-left:3px solid #a37740;border-radius:8px;padding:9px 11px;color:#65431d;font-size:12px;line-height:1.4;margin:0}
 #shopBody h3{color:#69431c;border-bottom:1px solid rgba(104,72,36,.25);padding:8px 4px 6px;margin:8px 0 2px}
@@ -941,8 +948,10 @@ function islandHudName(is){if(!is)return 'Au large';if(is.home)return 'Port';if(
 function updateZoneHint(dt){
  if(!zoneHintTxt)return;zoneHintClock-=dt;if(zoneHintClock>0)return;zoneHintClock=.16;
  if(foot.on){zoneHintEl.style.opacity='1';const n=foot.is?.ground?.length||0;
-  if(foot.is?.home){zoneHintTxt.textContent=dayT<homeHarvestUntil?'Récolte · '+homeHarvestLine():
-   'Île principale · '+n+' ressources · '+homeGardenStatus();return}
+  if(foot.is?.home){
+   if(dayT<homeHarvestUntil){zoneHintTxt.textContent='Récolte · '+homeHarvestLine();return}
+   const nearest=[{p:CAMP,n:'Se reposer',r:43},{p:STORE_POS,n:STORE.built?'Ouvrir le coffre':'Construire le coffre',r:36},{p:OVEN_POS,n:OVEN.built?'Utiliser le four':'Construire le four',r:36},{p:VILL.garden,n:'Cultiver',r:42,on:vStage>=2},{p:MARKET,n:'Commercer',r:92},{p:MINE,n:'Explorer la mine',r:43},{p:VILL.yard,n:'Chantier naval',r:48,on:vStage>=5}].find(q=>q.on!==false&&Math.hypot(foot.x-q.p.x,foot.y-q.p.y)<q.r);
+   zoneHintTxt.textContent=nearest?'À pied · '+nearest.n+' · touche pour agir':'Île principale · '+n+' ressources · '+homeGardenStatus();return}
   zoneHintTxt.innerHTML=n?`<b>À pied</b> · ${n} ressources au sol · touche pour récolter`:'<b>À pied</b> · Glisse pour marcher · touche pour agir';return}
  let best=null;for(const is of islands){const d=Math.hypot(boat.x-is.x,boat.y-is.y)-is.r;if(!best||d<best.d)best={is,d}}
  if(best&&best.d<900){const name=islandHudName(best.is),dist=Math.max(0,Math.round(best.d));const near=dist<120;zoneHintEl.style.opacity='1';zoneHintTxt.innerHTML=near?`<b>${name}</b> · <em>Accoste pour explorer</em>`:`<b>${name}</b> · ${dist} m`;return}
@@ -4046,6 +4055,7 @@ const VILL={houses:[{...VH(-62,-42),a:.15,roof:['#b5533c','#8e3e2c']},{...VH(-62
   flags:[VH(-98,58),VH(70,-92),VH(-100,-70)],folk:[0,1].map(i=>({x:HOME.x-40,y:HOME.y+20*i,tx:0,ty:0,wait:i+1,col:['#6a8a3a','#8a4a8a'][i],ph:i}))};
 const V_WP=[VH(-40,-10),VH(-70,20),VH(-20,40),VH(-50,-70),VH(0,-20),VH(-90,30)].map(v=>[v.x,v.y]);
 function drawHomePaths(ox,oy){
+ if(HOME.x+ox<-260||HOME.x+ox>W+260||HOME.y+oy<-260||HOME.y+oy>H+260)return;
  // Chemins purement visuels : aucune modification des collisions ou des autres îles.
  const road=(pts)=>{ctx.beginPath();pts.forEach((q,i)=>{const x=q.x+ox,y=q.y+oy;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)});
    ctx.strokeStyle='rgba(89,62,30,.21)';ctx.lineWidth=15;ctx.lineJoin='round';ctx.lineCap='round';ctx.stroke();
@@ -4614,8 +4624,8 @@ function spawnGround(is){const day=Math.floor(dayT/DAY);if(is.groundDay===day)re
     is.ground.push({x,y,k:opts[(Math.random()*opts.length)|0],ph:Math.random()*7})}}
 function disembark(is){if(is.home){for(const k of Object.keys(homeHarvestSummary))homeHarvestSummary[k]=0;homeHarvestUntil=0}wantCard('etals');document.body.classList.add('onfoot');const a=Math.atan2(boat.y-is.y,boat.x-is.x),R=radiusAt(is,a)*.86;foot.on=true;foot.is=is;if(docked()){foot.x=DOCK.x-10;foot.y=HOME.y;foot.a=Math.PI}else{foot.x=is.x+Math.cos(a)*R;foot.y=is.y+Math.sin(a)*R;foot.a=a+Math.PI}
   if(crew.playing>0){crew.playing=0;stopShanty()}foot.land={x:foot.x,y:foot.y};foot.goal=null;
-  boat.vx=boat.vy=0;crew.st='foot';ensureTrees(is);if(!is.planted)is.planted=[];spawnGround(is);wantCard('iles');if(AC)tone(520,.08,'sine',.05)}
-function embark(){document.body.classList.remove('onfoot');foot.on=false;PRINTS.length=0;foot.lpx=undefined;foot.goal=null;crew.st='boat';crew.dock=-99;if(AC)tone(620,.08,'sine',.05);saveGame()}
+  boat.vx=boat.vy=0;crew.st='foot';foot.approachCache=null;ensureTrees(is);if(!is.planted)is.planted=[];spawnGround(is);wantCard('iles');if(AC)tone(520,.08,'sine',.05)}
+function embark(){document.body.classList.remove('onfoot');foot.on=false;PRINTS.length=0;foot.lpx=undefined;foot.goal=null;foot.approachCache=null;crew.st='boat';crew.dock=-99;if(AC)tone(620,.08,'sine',.05);saveGame()}
 function footTargets(){const is=foot.is,out=[];if(is.home){out.push({k:'fire',x:CAMP.x,y:CAMP.y});out.push({k:'store',x:STORE_POS.x,y:STORE_POS.y});out.push({k:'oven',x:OVEN_POS.x,y:OVEN_POS.y});if(vStage>=2)out.push({k:'garden',x:VILL.garden.x,y:VILL.garden.y});if(vStage>=5)out.push({k:'yard',x:VILL.yard.x,y:VILL.yard.y})}for(const tr of is.trees||[])if(treeAlive(tr))out.push({k:'tree',o:tr,x:tr.x,y:tr.y});for(const pl of is.planted||[])out.push({k:'plant',o:pl,x:pl.x,y:pl.y});for(const g of is.ground||[])out.push({k:'ground',o:g,x:g.x,y:g.y});return out}
 function footAct(tg){const is=foot.is;
   if(tg.k==='ground'){const g=tg.o,i=is.ground.indexOf(g);if(i<0)return;
@@ -4635,7 +4645,7 @@ function footAct(tg){const is=foot.is;
   foot.swing=.55;tr.shk=1;tr.hp--;tr.hitT=t;
   if(tr.hp>0&&tr.hp%2===0)popText(tr.x,tr.y-20,'Coup de hache · '+(TREE_HP-tr.hp)+'/'+TREE_HP,'249,216,167');
   if(AC)noise(.08,.1,1400);for(let k=0;k<6;k++)fx.push({x:tr.x+(Math.random()-.5)*8,y:tr.y+(Math.random()-.5)*8,vx:(Math.random()-.5)*60,vy:(Math.random()-.5)*60,life:.5,c:'201,146,90',r:2});
-  if(tr.hp<=0){tr.cut=dayT||.001;tr.fall=1;popText(tr.x,tr.y-28,'Arbre abattu !','248,220,162');const w=3+((Math.random()*3)|0);if(spaceFor('r:bois',w)){lootRes(tr.x,tr.y,'r:bois',w);homeHarvestNotice('r:bois',w)}else{sayFull();(is.ground||(is.ground=[])).push({k:'wood',n:w,x:tr.x+(foot.x<tr.x?-10:10),y:tr.y+12,ph:Math.random()*6})}if(Math.random()<.35&&spaceFor('r:pousse',1))lootRes(tr.x,tr.y-14,'r:pousse',1);if(AC)noise(.4,.12,300)}
+  if(tr.hp<=0){tr.cut=dayT||.001;tr.fall=1;popText(tr.x,tr.y-28,'Arbre abattu !','248,220,162');const w=3+((Math.random()*3)|0);if(spaceFor('r:bois',w)){lootRes(tr.x,tr.y,'r:bois',w);homeHarvestNotice('r:bois',w)}else{sayFull();(is.ground||(is.ground=[])).push({k:'wood',n:w,x:tr.x+(foot.x<tr.x?-10:10),y:tr.y+12,ph:Math.random()*6})}if(Math.random()<.35){if(spaceFor('r:pousse',1))lootRes(tr.x,tr.y-14,'r:pousse',1);else if(is.home)(is.ground||(is.ground=[])).push({k:'sprout',n:1,x:tr.x+9,y:tr.y+14,ph:Math.random()*6})}if(AC)noise(.4,.12,300)}
   else foot.goal=tg}  // continue à couper tant qu'on ne bouge pas
 function footPlant(x,y){const is=foot.is;if(!resCount('r:pousse')){toast.textContent='Coupe des arbres pour obtenir des pousses à planter';toast.style.color='#ffe9b0';biomeBannerT=2;return}
   if(!inIsland(is,x,y,.8)||blocked(x,y,10)||footTargets().some(o=>o.k!=='ground'&&Math.hypot(o.x-x,o.y-y)<20)){toast.textContent='Pas de place ici pour planter';toast.style.color='#ffe9b0';biomeBannerT=1.6;return}
@@ -4645,13 +4655,17 @@ function homeApproach(goal){
  if(!foot.is?.home||!['fire','store','oven','garden','yard','npc','stall','mine'].includes(goal.k))return goal;
  const reach=goal.k==='garden'?36:goal.k==='yard'?34:goal.k==='fire'?28:goal.k==='npc'?24:goal.k==='store'||goal.k==='oven'?20:14;
  if(Math.hypot(goal.x-foot.x,goal.y-foot.y)<=reach)return goal;
+ const cx=Math.round(foot.x/14),cy=Math.round(foot.y/14),cache=foot.approachCache;
+ if(cache&&cache.goal===goal&&cache.cx===cx&&cache.cy===cy&&Math.hypot(cache.x-foot.x,cache.y-foot.y)>7)return cache;
  let best=null,score=Infinity;
- for(let i=0;i<16;i++){
-  const a=Math.PI*2*i/16,r=reach*.77,x=goal.x+Math.cos(a)*r,y=goal.y+Math.sin(a)*r;
+ for(const radius of [reach*.72,reach*.92])for(let i=0;i<16;i++){
+  const a=i*Math.PI/8,x=goal.x+Math.cos(a)*radius,y=goal.y+Math.sin(a)*radius;
   if(!walkable(foot.is,x,y))continue;
-  const d=Math.hypot(x-foot.x,y-foot.y);
-  if(d<score){score=d;best={x,y}}
+  const d=Math.hypot(x-foot.x,y-foot.y),mx=(x+foot.x)*.5,my=(y+foot.y)*.5;
+  const cost=d+(walkable(foot.is,mx,my)?0:55);
+  if(cost<score){score=cost;best={x,y}}
  }
+ foot.approachCache=best?{...best,goal,cx,cy}:null;
  return best||goal;
 }
 function footStep(dt){const is=foot.is;foot.swing=Math.max(0,foot.swing-dt);for(const tr of is.trees||[]){tr.shk=Math.max(0,tr.shk-dt*3);tr.fall=Math.max(0,tr.fall-dt*1.6)}
@@ -4664,7 +4678,7 @@ function footStep(dt){const is=foot.is;foot.swing=Math.max(0,foot.swing-dt);for(
   if(ok(nx,ny)){foot.x=nx;foot.y=ny}else{let done=false;const L0=Math.hypot(mx,my)*sp*dt,a0=Math.atan2(my,mx);
     for(const da of [.5,-.5,1,-1,1.5,-1.5]){const qx=foot.x+Math.cos(a0+da*(foot.side||1))*L0,qy=foot.y+Math.sin(a0+da*(foot.side||1))*L0;if(ok(qx,qy)){foot.x=qx;foot.y=qy;if(da<0)foot.side=-(foot.side||1);done=true;break}}
     if(!done){if(ok(nx,foot.y))foot.x=nx;else if(ok(foot.x,ny))foot.y=ny}}
-  if(foot.goal&&(mx||my)){if(Math.hypot(foot.x-px0,foot.y-py0)<sp*dt*.2){foot.stuck=(foot.stuck||0)+dt;if(foot.stuck>1.1){if(is.home)popText(foot.x,foot.y-18,'Passage bloqué','255,210,150');foot.goal=null;foot.stuck=0}}else foot.stuck=0}
+  if(foot.goal&&(mx||my)){if(Math.hypot(foot.x-px0,foot.y-py0)<sp*dt*.2){foot.stuck=(foot.stuck||0)+dt;if(foot.stuck>1.1){if(is.home)popText(foot.x,foot.y-18,'Passage bloqué','255,210,150');foot.goal=null;foot.approachCache=null;foot.stuck=0}}else foot.stuck=0}
   {const d=Math.hypot(foot.x-(foot.lpx??foot.x),foot.y-(foot.lpy??foot.y));if(foot.lpx===undefined||d>7){const onSand=!onPier(foot.x,foot.y)&&Math.hypot(foot.x-is.x,foot.y-is.y)>radiusAt(is,Math.atan2(foot.y-is.y,foot.x-is.x))*.8;
     if(foot.lpx!==undefined&&onSand){foot.step=-(foot.step||1);const nx2=-Math.sin(foot.a)*2.2*foot.step,ny2=Math.cos(foot.a)*2.2*foot.step;PRINTS.push({x:foot.x+nx2,y:foot.y+ny2,a:foot.a,t:0});if(PRINTS.length>60)PRINTS.shift()}foot.lpx=foot.x;foot.lpy=foot.y}}
   for(let i=PRINTS.length-1;i>=0;i--){PRINTS[i].t+=dt;if(PRINTS[i].t>8)PRINTS.splice(i,1)}
@@ -4698,7 +4712,7 @@ function drawFoot(ox,oy){if(!foot.on)return;const is=foot.is;
  // Informations légères et uniquement à proximité, sans dessiner chaque compteur.
  if(is.home&&!ECO){let visible=0;
   for(const tr of is.trees||[]){
-   if(visible>=3||Math.hypot(tr.x-foot.x,tr.y-foot.y)>65)continue;
+   if(visible>=3||Math.abs(tr.x-foot.x)>65||Math.abs(tr.y-foot.y)>65||Math.hypot(tr.x-foot.x,tr.y-foot.y)>65)continue;
    if(tr.cut){const label=homeTreeRegrowth(tr);ctx.fillStyle='rgba(12,45,49,.8)';ctx.font='700 8px system-ui';ctx.textAlign='center';ctx.fillText(label,tr.x+ox,tr.y+oy-20);visible++}
    else if(treeGrow(tr)>=1&&visible<2){ctx.fillStyle='#ffe49a';ctx.font='700 9px system-ui';ctx.textAlign='center';ctx.fillText('● fruits',tr.x+ox,tr.y+oy-20);visible++}
   }
@@ -4902,9 +4916,9 @@ function putIn(list,slots,it){if(it.id[0]!=='f'){let left=it.n;for(const x of li
     while(left>0&&list.length<slots){const k=Math.min(left,RES_STACK);list.push({id:it.id,n:k});left-=k}return left}
   if(list.length<slots){list.push(it);return 0}return it.n||1}
 function storeDeposit(i){const it=inv[i];if(!it)return;const left=putIn(STORE.items,storeSlots(),Object.assign({},it));if(left===0)inv.splice(i,1);else if(it.id[0]!=='f')it.n=left;else{storeMsg('Le coffre est plein');return}
-  if(AC)tone(520,.06,'triangle',.04);renderStore()}
+  if(AC)tone(520,.06,'triangle',.04);renderStore();saveGame()}
 function storeTake(i){const it=STORE.items[i];if(!it)return;const left=putIn(inv,INV.slots,Object.assign({},it));if(left===0)STORE.items.splice(i,1);else if(it.id[0]!=='f')it.n=left;else{storeMsg('Ta cale est pleine');return}
-  if(AC)tone(660,.06,'triangle',.04);renderStore()}
+  if(AC)tone(660,.06,'triangle',.04);renderStore();saveGame()}
 function storeResources(){
  let moved=0;
  for(let i=inv.length-1;i>=0;i--){
@@ -4917,7 +4931,7 @@ function storeResources(){
  renderStore();saveGame();
 }
 function storeAll(){let moved=0;for(let i=inv.length-1;i>=0;i--){const it=inv[i];if(BAITS[it.id])continue;const left=putIn(STORE.items,storeSlots(),Object.assign({},it));if(left===0){inv.splice(i,1);moved++}else if(it.id[0]!=='f'&&left<it.n){it.n=left;moved++}}
-  if(!moved)storeMsg(inv.some(x=>!BAITS[x.id])?'Le coffre est plein':'Rien à déposer (les appâts restent dans la cale)');else if(AC){tone(520,.08,'triangle',.05);tone(780,.1,'triangle',.05,.08)}renderStore()}
+  if(!moved)storeMsg(inv.some(x=>!BAITS[x.id])?'Le coffre est plein':'Rien à déposer (les appâts restent dans la cale)');else if(AC){tone(520,.08,'triangle',.05);tone(780,.1,'triangle',.05,.08)}renderStore();saveGame()}
 function storeUpgrade(){const c=STORE_UP[STORE.lvl];if(!c)return;if(resCount('r:bois')<c[0]||resCount('r:fer')<c[1]||resCount('r:pierre')<c[2]){storeMsg('Il faut '+c[0]+' bois, '+c[2]+' pierres et '+c[1]+' fer');return}
   removeRes('r:bois',c[0]);removeRes('r:fer',c[1]);removeRes('r:pierre',c[2]);STORE.lvl++;buyFx();storeMsg('Coffre agrandi : '+storeSlots()+' places');renderStore();saveGame()}
 function storeMsg(t){document.getElementById('stNote').textContent=t}
@@ -5942,6 +5956,7 @@ function validSave(d){
   if(d.campLevel!==undefined&&(!Number.isInteger(d.campLevel)||d.campLevel<0||d.campLevel>2))return false;
   if(d.homeOrders!==undefined&&(!d.homeOrders||typeof d.homeOrders!=='object'||!Number.isInteger(d.homeOrders.day)||d.homeOrders.day< -1||d.homeOrders.day>1e8||!Array.isArray(d.homeOrders.done)||d.homeOrders.done.length>2||d.homeOrders.done.some(x=>typeof x!=='string'||x.length>40)))return false;
   if(d.homeReputation!==undefined&&(!Number.isInteger(d.homeReputation)||d.homeReputation<0||d.homeReputation>999))return false;
+  if(d.store!==undefined&&(!d.store||typeof d.store!=='object'||!Array.isArray(d.store.items)||d.store.items.length>40||d.store.items.some(x=>!x||typeof x.id!=='string'||x.id.length>100||!Number.isFinite(x.n)||x.n<1||x.n>1e6)))return false;
   return true;
 }
 function readSave(raw){try{const d=JSON.parse(raw);return validSave(d)?d:null}catch(e){return null}}
@@ -5970,7 +5985,7 @@ function loadGame(){let d=getSavedGame();
   (d.chests||[]).forEach(c=>chests.push({x:c.x,y:c.y,r:c.r,ph:c.ph,keep:!!c.keep}));
   if(Array.isArray(d.rocks))d.rocks.forEach((q,i)=>{if(ROCKS[i]){ROCKS[i].alive=!!q.a;ROCKS[i].hp=Math.max(1,Math.min(ROCKS[i].max,q.hp|0||ROCKS[i].max))}});
   if(d.flog&&typeof d.flog==='object')flog=d.flog;if(d.bseen&&typeof d.bseen==='object')bseen=d.bseen;if(d.bkill&&typeof d.bkill==='object')bkill=d.bkill;if(d.daily&&typeof d.daily==='object'&&Array.isArray(d.daily.list))daily=d.daily;if(d.look&&typeof d.look==='object')for(const k in look)look[k]=d.look[k]|0;if(d.owned&&typeof d.owned==='object')for(const k in owned)if(Array.isArray(d.owned[k]))owned[k]=d.owned[k];if(d.unlocks&&typeof d.unlocks==='object')unlocks=d.unlocks;if(d.vStage)vStage=Math.max(1,Math.min(5,d.vStage|0));if(typeof d.carry==='number')carry=d.carry;if(d.isl3&&sameWorld&&typeof d.isl3==='object')Object.assign(ISL_SAVE,d.isl3);if(d.rumor&&typeof d.rumor==='object'&&isFinite(d.rumor.x))RUMOR=d.rumor;if(d.evt&&typeof d.evt==='object'){EVT.k=d.evt.k||null;EVT.end=+d.evt.end||0;EVT.next=+d.evt.next||EVT.next;EVT.freeSpin=d.evt.fs?1:0}
-  if(Array.isArray(d.odd))ODD_SEEN=d.odd.filter(i=>i>=0&&i<8);if(d.store&&typeof d.store==='object'){STORE.built=!!d.store.built;STORE.lvl=Math.max(0,Math.min(3,d.store.lvl|0));STORE.items=Array.isArray(d.store.items)?d.store.items.filter(x=>x&&typeof x.id==='string'):[]}if(typeof d.baitSel==='string'&&BAITS[d.baitSel])baitSel=d.baitSel;baitInit=!!d.baitInit;
+  if(Array.isArray(d.odd))ODD_SEEN=d.odd.filter(i=>i>=0&&i<8);if(d.store&&typeof d.store==='object'){STORE.built=!!d.store.built;STORE.lvl=Math.max(0,Math.min(3,d.store.lvl|0));STORE.items=Array.isArray(d.store.items)?d.store.items.filter(x=>x&&typeof x.id==='string'&&Number.isFinite(x.n)&&x.n>0).slice(0,storeSlots()):[]}if(typeof d.baitSel==='string'&&BAITS[d.baitSel])baitSel=d.baitSel;baitInit=!!d.baitInit;
   if(d.iev&&sameWorld&&islands[d.iev.isl]){const q=d.iev;IEV={type:q.type,is:islands[q.isl],a:q.a,bx:q.bx,by:q.by,wx:q.wx,wy:q.wy,T:q.T,mu:q.mu,dig:0,opened:false,sold:q.sold,offer:null,pir:q.pir?[-1,0,1].map((k2,i)=>({o:k2*.12,hp:q.pir[i],max:Math.max(1,Math.round(2*q.mu)),cd:2+i,flash:0})):null}}if(d.tmap&&sameWorld&&islands[d.tmap.isl])tmap={x:+d.tmap.x,y:+d.tmap.y,isl:d.tmap.isl|0,dig:0};
   setTimeout(()=>{hp=Math.max(1,Math.min(hpMax(),hp));showHp()},0);
   if(typeof d.fog==='string'&&sameWorld)fogFromStr(d.fog);krakenSeen=!!d.kseen&&sameWorld;
