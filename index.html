@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="fr">
 <head>
-<title>Prototype Mer 2.0.8</title>
+<title>Prototype Mer 2.0.9</title>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -186,6 +186,18 @@ body.inmine .stats,body.inmine #help{display:none!important}body.inmine #toast{t
 #bossBar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 22px);width:min(300px,calc(100vw - 40px));background:rgba(6,32,46,.85);border-radius:12px;padding:6px 10px 8px;color:#fff;font-weight:800;font-size:13px;text-align:center;pointer-events:none;z-index:4}
 #bossBar .bb{height:8px;border-radius:99px;background:rgba(255,255,255,.18);overflow:hidden;margin-top:4px}#bossBar .bb i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#e8503a,#ff9a5a);transition:width .15s}
 #bossBar.rage{box-shadow:0 0 12px rgba(232,80,58,.8)}#bossBar.rage span{color:#ffb39a}
+
+/* 2.0.9 — hiérarchie graphique des ressources, inventaire et commerçants */
+#shopBody .merchantHint{background:rgba(255,248,220,.68);border-left:3px solid #a37740;border-radius:8px;padding:9px 11px;color:#65431d;font-size:12px;line-height:1.4;margin:0}
+#shopBody h3{color:#69431c;border-bottom:1px solid rgba(104,72,36,.25);padding:8px 4px 6px;margin:8px 0 2px}
+#shopBody .shoprow:has(button:disabled){opacity:.82}
+#shopBody .sell:disabled{filter:grayscale(.65);box-shadow:none!important}
+#invCount{line-height:1.4}
+.invgrid .slot[data-kind='r']{border-color:rgba(80,140,72,.55)}
+.invgrid .slot[data-kind='f']{border-color:rgba(60,127,171,.55)}
+.invgrid .slot[data-kind='m'],.invgrid .slot[data-kind='c']{border-color:rgba(177,129,48,.65)}
+.invKindTag{position:absolute;top:3px;left:4px;font:800 9px system-ui,sans-serif;background:rgba(32,64,64,.78);color:#fff;border-radius:5px;padding:2px 4px;z-index:1;pointer-events:none}
+@media (pointer:coarse) and (orientation:portrait){#shopBody .maptabs{top:0}#shopBody .shoprow .sell{min-height:44px}#invCount{font-size:12px}}
 
 /* 2.0.8 — boutique, inventaire et cibles de collecte */
 #shop .card{border-color:#73502c!important;background:linear-gradient(145deg,#fff0c8,#e9c994)!important}
@@ -767,6 +779,19 @@ function buildIslandRaw(is){
   }
   if(is.light){const a=((is.x*.013)%1)*Math.PI*2,d=radiusAt(is,a)*.72,lx=cx+Math.cos(a)*d,ly=cy+Math.sin(a)*d;lighthouse(c,lx,ly);if(BUILD_IS)BUILD_IS.lightPos=[lx-cx,ly-cy]}
   beachDetails(c,is,cx,cy,r2,kind==='epave'?.62:kind==='roche'?.82:.78);
+  // 2.0.9 — petits détails de terrain persistants, sans nouveau blocage de chemin.
+  // Dessinés une seule fois dans le sprite : coût nul pendant la navigation.
+  {const shades=kind==='roche'?['rgba(55,50,44,.17)','rgba(245,232,210,.16)']:
+    kind==='ruines'?['rgba(42,91,45,.18)','rgba(246,224,172,.15)']:
+    ['rgba(55,133,58,.17)','rgba(250,237,181,.17)'];
+   for(let i=0;i<Math.min(76,Math.round(is.r*.42));i++){
+     const [x,y]=IP(is,cx,cy,r2,.12,.83),a=r2()*6.283,k=.9+r2()*1.9;
+     c.save();c.translate(x,y);c.rotate(a);c.strokeStyle=shades[i%2];c.lineWidth=.8+r2()*.7;c.lineCap='round';
+     c.beginPath();c.moveTo(-2.8*k,0);c.quadraticCurveTo(0,-1.4*k,3.7*k,0);c.stroke();
+     if(i%5===0){c.fillStyle=shades[0];c.beginPath();c.ellipse(0,0,3*k,1.6*k,0,0,Math.PI*2);c.fill()}
+     c.restore();
+   }
+  }
   if(is.home){
     // Ponton
     const x0=cx+is.r*.75,x1=cx+is.r+70;
@@ -3236,12 +3261,18 @@ const invDetail=document.getElementById('invDetail'),invAsk=document.getElementB
 let invSel=-1;
 function darker(c){return 'rgb('+c.split(',').map(v=>Math.round(v*.6)).join(',')+')'}
 function renderInv(){
-  invCount.textContent=inv.length+' / '+INV.slots+' emplacements';
+  const resources=inv.filter(it=>it.id.startsWith('r:')).reduce((n,it)=>n+it.n,0);
+  const fishes=inv.filter(it=>it.id.startsWith('f:')).length;
+  invCount.textContent=inv.length+' / '+INV.slots+' places · '+resources+' ressources · '+fishes+' poissons';
   invGrid.innerHTML='';
   for(let i=0;i<INV.slots;i++){const b=document.createElement('button');b.type='button';b.className='slot';
     const it=inv[i];
     if(!it){b.classList.add('empty');b.disabled=true;b.setAttribute('aria-label','Emplacement vide')}
     else{const info=itemInfo(it.id);b.setAttribute('aria-label',info.name+', '+it.n);
+      b.dataset.kind=info.kind;
+      const kindTag=document.createElement('span');kindTag.className='invKindTag';
+      kindTag.textContent=info.kind==='r'?'R':info.kind==='f'?'P':info.kind==='m'?'I':'C';
+      kindTag.setAttribute('aria-hidden','true');b.appendChild(kindTag);
       const cvs=document.createElement('canvas');cvs.width=96;cvs.height=96;const c=cvs.getContext('2d');
       if(info.kind==='m')drawMapIcon(c,48,48,2.2);else if(info.kind==='r')drawResIcon(c,48,48,2.2,it.id);else if(info.kind==='f')drawSpecies(c,46,48,2.4,info.sp,0);else drawChestIcon(c,48,50,2.2,info.r);
       b.appendChild(cvs);
@@ -4334,8 +4365,10 @@ function footAct(tg){const is=foot.is;
   if(tg.k==='plant'){const pl=tg.o;if(dayT-pl.at<DAY)return;if(treeGrow(pl)>=1){if(!spaceFor('r:fruit',2)){sayFull();return}lootRes(pl.x,pl.y,'r:fruit',2);pickTree(pl)}return}
   const tr=tg.o;
   if((is.b===0||is.b===1)&&treeGrow(tr)>=1&&spaceFor('r:fruit',2)){lootRes(tr.x,tr.y,'r:fruit',2);pickTree(tr);tr.shk=1;if(AC)tone(760,.08,'sine',.05);return}
-  foot.swing=.55;tr.shk=1;tr.hp--;tr.hitT=t;if(AC)noise(.08,.1,1400);for(let k=0;k<6;k++)fx.push({x:tr.x+(Math.random()-.5)*8,y:tr.y+(Math.random()-.5)*8,vx:(Math.random()-.5)*60,vy:(Math.random()-.5)*60,life:.5,c:'201,146,90',r:2});
-  if(tr.hp<=0){tr.cut=dayT;tr.fall=1;const w=3+((Math.random()*3)|0);if(spaceFor('r:bois',w))lootRes(tr.x,tr.y,'r:bois',w);else{sayFull();(is.ground||(is.ground=[])).push({k:'wood',n:w,x:tr.x+(foot.x<tr.x?-10:10),y:tr.y+12,ph:Math.random()*6})}if(Math.random()<.35&&spaceFor('r:pousse',1))lootRes(tr.x,tr.y-14,'r:pousse',1);if(AC)noise(.4,.12,300)}
+  foot.swing=.55;tr.shk=1;tr.hp--;tr.hitT=t;
+  if(tr.hp>0&&tr.hp%2===0)popText(tr.x,tr.y-20,'Coup de hache','249,216,167');
+  if(AC)noise(.08,.1,1400);for(let k=0;k<6;k++)fx.push({x:tr.x+(Math.random()-.5)*8,y:tr.y+(Math.random()-.5)*8,vx:(Math.random()-.5)*60,vy:(Math.random()-.5)*60,life:.5,c:'201,146,90',r:2});
+  if(tr.hp<=0){tr.cut=dayT;tr.fall=1;popText(tr.x,tr.y-28,'Arbre abattu !','248,220,162');const w=3+((Math.random()*3)|0);if(spaceFor('r:bois',w))lootRes(tr.x,tr.y,'r:bois',w);else{sayFull();(is.ground||(is.ground=[])).push({k:'wood',n:w,x:tr.x+(foot.x<tr.x?-10:10),y:tr.y+12,ph:Math.random()*6})}if(Math.random()<.35&&spaceFor('r:pousse',1))lootRes(tr.x,tr.y-14,'r:pousse',1);if(AC)noise(.4,.12,300)}
   else foot.goal=tg}  // continue à couper tant qu'on ne bouge pas
 function footPlant(x,y){const is=foot.is;if(!resCount('r:pousse')){toast.textContent='Coupe des arbres pour obtenir des pousses à planter';toast.style.color='#ffe9b0';biomeBannerT=2;return}
   if(!inIsland(is,x,y,.8)||blocked(x,y,10)||footTargets().some(o=>o.k!=='ground'&&Math.hypot(o.x-x,o.y-y)<20)){toast.textContent='Pas de place ici pour planter';toast.style.color='#ffe9b0';biomeBannerT=1.6;return}
@@ -4381,10 +4414,11 @@ function drawFoot(ox,oy){if(!foot.on)return;const is=foot.is;
   for(const pl of is.planted||[]){const X=pl.x+ox,Y=pl.y+oy,age=Math.min(1,(dayT-pl.at)/DAY);
     if(age<1){ctx.fillStyle='#8a6a48';ctx.beginPath();ctx.ellipse(X,Y+1,5,3,0,0,7);ctx.fill();ctx.fillStyle='#6fb34a';const sz=2+age*6;ctx.beginPath();ctx.ellipse(X-sz*.5,Y-1,sz,sz*.45,-.5,0,7);ctx.ellipse(X+sz*.5,Y-2,sz,sz*.45,.5,0,7);ctx.fill()}
     else{ctx.save();ctx.translate(X,Y);ctx.rotate(pl.x%6);ctx.scale(.5,.5);ctx.drawImage(CROWN,-64,-64);ctx.restore();if(treeGrow(pl)>=1){ctx.fillStyle='#e8892a';for(let k=0;k<3;k++){ctx.beginPath();ctx.arc(X+Math.cos(k*2.1)*4,Y+Math.sin(k*2.1)*4,2.4,0,7);ctx.fill()}}}}
-  // 2.0.8 : indicateurs de récolte près du personnage ; uniquement à courte distance.
+  // 2.0.9 : collectibles visibles à courte distance, sans surcharge de l'écran.
   if(!ECO){for(const g of is.ground||[]){const dist=Math.hypot(g.x-foot.x,g.y-foot.y);if(dist>88||dist<10)continue;
-    const sx=g.x+ox,sy=g.y+oy,al=(1-dist/130)*(.28+.12*Math.sin(t*3+g.ph));
-    ctx.strokeStyle=`rgba(255,242,192,${al})`;ctx.lineWidth=1.4;ctx.beginPath();ctx.ellipse(sx,sy,8+Math.sin(t*2+g.ph)*1.4,6,0,0,7);ctx.stroke();
+    const sx=g.x+ox,sy=g.y+oy,pulse=.5+.5*Math.sin(t*3+g.ph),al=(1-dist/130)*(.26+.18*pulse);
+    ctx.strokeStyle=`rgba(255,242,192,${al})`;ctx.lineWidth=1.5;ctx.beginPath();ctx.ellipse(sx,sy,8+pulse*2,5.6+pulse,0,0,7);ctx.stroke();
+    if(dist<52){ctx.fillStyle=`rgba(255,251,209,${al*.65})`;ctx.beginPath();ctx.arc(sx,sy-8-pulse*2,1.6+pulse,0,7);ctx.fill()}
   }}
   if(foot.goal&&foot.goal.k==='tree'){const s0=foot.goal.o.s0||1,R=Math.max(16,26*s0),rt=foot.ringT||0;foot.ringT=Math.max(0,rt-1/60);ctx.strokeStyle='rgba(20,30,40,.45)';ctx.lineWidth=3;ctx.setLineDash([4,4]);ctx.beginPath();ctx.arc(foot.goal.x+ox,foot.goal.y+oy,R+rt*10,0,7);ctx.stroke();ctx.strokeStyle='rgba(255,255,255,'+(.8+rt*.4)+')';ctx.lineWidth=1.6;ctx.beginPath();ctx.arc(foot.goal.x+ox,foot.goal.y+oy,R+rt*10,0,7);ctx.stroke();ctx.setLineDash([])}
   // le marin à pied (hache à la main)
@@ -5086,6 +5120,9 @@ function shopRow(title,desc,btn,state){const d=document.createElement('div');d.c
 function buyFx(){sellCoins();showGold();renderShop()}
 function renderShop(){if(shopTab==='atelier'){renderAtelier();return}shopBody.innerHTML='';
   document.getElementById('shopGold').textContent=gold.toLocaleString('fr-BE')+' or';
+  const hint=document.createElement('p');hint.className='merchantHint';
+  hint.textContent='⚓ Comptoir du port · Répare, vends tes trouvailles, fabrique ou améliore ton équipement.';
+  shopBody.appendChild(hint);
   const h=(txt)=>{const e=document.createElement('h3');e.textContent=txt;shopBody.appendChild(e)};
   h('Réparation');
   if(hp<hpMax()){const c=repairCost();shopBody.appendChild(shopRow('Réparer la coque','Coque à '+Math.round(hp/hpMax()*100)+' %. Remise à neuf complète.',shopBtn('Réparer · '+c+' or',gold>=c,()=>{gold-=c;hp=hpMax();showHp();buyFx()})))}
