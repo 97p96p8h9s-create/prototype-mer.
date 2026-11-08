@@ -5351,7 +5351,7 @@ function renderShop(){if(shopTab==='atelier'){renderAtelier();return}shopBody.in
     let state='Coût : '+parts.join(' · ');if(c.lv&&level<c.lv){ok=false;state+=' · Niveau de combat '+c.lv+' requis'}
     shopBody.appendChild(shopRow(I.name+' · niveau '+L+' → '+(L+1),I.eff(L)+' → '+I.eff(L+1),shopBtn('Améliorer',ok,()=>upgradePart(k)),state))}
   // onglets : Réparer et vendre / Fabriquer / Améliorer
-  {const TAB={'Réparation':'vendre','Revente des ressources':'vendre','Appâts':'fab','Armement':'fab'};let cur='vendre';for(const el of [...shopBody.children]){if(el.tagName==='H3')cur=TAB[el.textContent]||'amel';el.hidden=cur!==shopSub}
+  {const TAB={'Réparation':'vendre','Commandes du village':'vendre','Revente des ressources':'vendre','Appâts':'fab','Armement':'fab'};let cur='vendre';for(const el of [...shopBody.children]){if(el.tagName==='H3')cur=TAB[el.textContent]||'amel';el.hidden=cur!==shopSub}
     const bar=document.createElement('div');bar.className='maptabs';for(const [k,lab] of [['vendre','Réparer et vendre'],['fab','Fabriquer'],['amel','Améliorer']]){const b=document.createElement('button');b.type='button';b.textContent=lab;if(k===shopSub)b.className='on';b.addEventListener('click',()=>{shopSub=k;renderShop();shopBody.scrollTop=0});bar.appendChild(b)}shopBody.prepend(bar)}
 }
 let shopSub='vendre';
