@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="fr">
 <head>
-<title>Prototype Mer 2.1.1</title>
+<title>Prototype Mer 2.1.2</title>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -291,6 +291,12 @@ body.inmine .stats,body.inmine #help{display:none!important}body.inmine #toast{t
 .weatherDetails{font-size:14px;line-height:1.5}
 .weatherForecast{background:#fff5dc;border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.4}
 #weatherAlert{font-weight:800;color:#ab512b}
+
+/* 2.1.2 : jardin et interactions de l'ile principale */
+#gardenEl .card{max-height:calc(100dvh - 28px);overflow:auto}
+.homeSection{font:800 13px system-ui;color:#7a4a2a;margin:4px 0 0}
+.homeHint{font-size:13px;line-height:1.35;color:#6b5036;background:#f4e4c1;padding:9px 11px;border-radius:9px}
+.homeAction{width:100%;min-height:44px}
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800&display=swap">
 </head>
@@ -369,6 +375,13 @@ body.inmine .stats,body.inmine #help{display:none!important}body.inmine #toast{t
     <div id="mnBody" class="loglist"></div>
   </div>
 </div>
+<div id="gardenEl" class="overlay" hidden>
+  <div class="card" role="dialog" aria-labelledby="gardenTitle">
+    <div class="ghead"><h2 id="gardenTitle">Potager du village</h2><button id="gardenClose" type="button" class="link">Fermer</button></div>
+    <div class="homeHint" id="gardenNote">Plante des fruits, puis reviens les récolter.</div>
+    <div class="loglist" id="gardenBody"></div>
+  </div>
+</div>
 <div id="fireEl" class="overlay" hidden>
   <div class="card" role="dialog" aria-labelledby="fiTitle">
     <div class="ghead"><h2 id="fiTitle">Feu de camp</h2><button id="fiClose" type="button" class="link">Fermer</button></div>
@@ -401,7 +414,10 @@ body.inmine .stats,body.inmine #help{display:none!important}body.inmine #toast{t
     <div class="ghead"><h2 id="stTitle">Coffre</h2><button id="stClose" type="button" class="link">Fermer</button></div>
     <div class="invcount" id="stHoldN"></div>
     <div id="stHold" class="invgrid"></div>
-    <button id="stAll" type="button" class="sell big">Tout déposer</button>
+    <div class="duo">
+      <button id="stResources" type="button" class="sell big">Ranger les ressources</button>
+      <button id="stAll" type="button" class="sell big">Tout déposer</button>
+    </div>
     <div class="invcount" id="stBoxN"></div>
     <div id="stBox" class="invgrid stbox"></div>
     <button id="stUp" type="button" class="sell"></button>
@@ -3702,6 +3718,10 @@ function drawMarket(ox,oy,z){const X0=MARKET.x+ox,Y0=MARKET.y+oy;if(X0<-160||X0>
   // mouettes
   for(const g of MARKET.gulls){const X=g.x+ox,Y=g.y+oy-(g.f>0?Math.sin((1.2-g.f)/1.2*Math.PI)*16:0)-5;const fl=g.f>0?Math.sin(t*25)*3:0;
     ctx.fillStyle='#ffffff';ctx.beginPath();ctx.ellipse(X,Y,3,2,0,0,7);ctx.fill();ctx.strokeStyle='#ffffff';ctx.lineWidth=1.4;ctx.beginPath();ctx.moveTo(X-1,Y);ctx.lineTo(X-4,Y-1-fl);ctx.moveTo(X+1,Y);ctx.lineTo(X+4,Y-1-fl);ctx.stroke();ctx.fillStyle='#e8a030';ctx.fillRect(X+2.6,Y-.4,1.4,.8)}
+  // Lumières du comptoir et des étals au crépuscule : petits halos, sans nouvelle texture.
+  if(darkness()>.2){const alpha=Math.min(.38,darkness()*.3);
+    for(const st of MARKET.stalls){const X=st.x+ox,Y=st.y+oy-28;
+      ctx.fillStyle='rgba(255,211,112,'+alpha+')';ctx.beginPath();ctx.arc(X,Y,7+Math.sin(t*2+st.x)*1.2,0,Math.PI*2);ctx.fill()}}
   // enseignes flottantes
   MARKET.scr=[];
   for(const st of MARKET.stalls){const X=st.x+ox,Y=st.y+oy-34+Math.sin(t*2+st.x)*2;drawIcon(st.icon,X,Y,9);MARKET.scr.push({k:st.k,x:st.x+ox,y:st.y+oy-6})}
@@ -3962,6 +3982,31 @@ const VH=(dx,dy)=>({x:HOME.x+dx*HOME_K,y:HOME.y+dy*HOME_K});
 const VILL={houses:[{...VH(-62,-42),a:.15,roof:['#b5533c','#8e3e2c']},{...VH(-62,68),a:-.2,roof:['#4f7aa8','#38597d']}],garden:VH(-18,-62),well:VH(-26,8),nets:VH(42,104),light:VH(-128,-18),yard:VH(-44,122),
   flags:[VH(-98,58),VH(70,-92),VH(-100,-70)],folk:[0,1].map(i=>({x:HOME.x-40,y:HOME.y+20*i,tx:0,ty:0,wait:i+1,col:['#6a8a3a','#8a4a8a'][i],ph:i}))};
 const V_WP=[VH(-40,-10),VH(-70,20),VH(-20,40),VH(-50,-70),VH(0,-20),VH(-90,30)].map(v=>[v.x,v.y]);
+// Trois plates-bandes existantes du village, sans ressource ni monde supplémentaire.
+const HOME_GARDEN=[{at:0},{at:0},{at:0}];
+function renderGarden(){
+ const body=document.getElementById('gardenBody');body.innerHTML='';
+ document.getElementById('gardenNote').textContent='Le potager ouvre avec les premières maisons du village. 1 fruit semé par parcelle, environ 3 minutes de croissance.';
+ HOME_GARDEN.forEach((p,i)=>{
+  const remain=p.at?Math.max(0,Math.ceil(180-(dayT-p.at))):0;
+  const label='Parcelle '+(i+1);
+  if(!p.at){
+   body.appendChild(shopRow(label,'Terre disponible · fruits dans ta cale : '+resCount('r:fruit'),
+     shopBtn('Planter · 1 fruit',resCount('r:fruit')>=1,()=>{removeRes('r:fruit',1);p.at=dayT||.001;popText(VILL.garden.x,VILL.garden.y-18,'Semis planté','150,220,120');saveGame();renderGarden()})));
+  }else if(remain){
+   body.appendChild(shopRow(label,'Culture en croissance · encore '+Math.ceil(remain/60)+' min environ',null,'En croissance'));
+  }else{
+   body.appendChild(shopRow(label,'Récolte prête : 3 fruits et 1 herbe',
+     shopBtn('Récolter',spaceFor('r:fruit',3)&&spaceFor('r:herbe',1),()=>{
+      addRes('r:fruit',3);addRes('r:herbe',1);p.at=0;
+      popText(VILL.garden.x,VILL.garden.y-18,'+3 fruits · +1 herbe','180,235,140');if(AC)tone(760,.12,'triangle',.05);saveGame();renderGarden()
+     }),spaceFor('r:fruit',3)&&spaceFor('r:herbe',1)?'':'Cale pleine'));
+  }
+ });
+}
+function openGarden(){if(vStage<2)return;renderGarden();document.getElementById('gardenEl').hidden=false;paused=true;touch=null}
+document.getElementById('gardenClose').addEventListener('click',()=>{document.getElementById('gardenEl').hidden=true;paused=false;saveGame()});
+document.getElementById('gardenEl').addEventListener('pointerdown',e=>e.stopPropagation());
 function drawHouse(h,X,Y,big){ctx.save();ctx.translate(X,Y);ctx.rotate(h.a);
   {const L=12,c0=Math.cos(-h.a),s0=Math.sin(-h.a),sx=(SUN.x*c0-SUN.y*s0)*L,sy=(SUN.x*s0+SUN.y*c0)*L;ctx.fillStyle=`rgba(0,0,0,${SUN.a})`;ctx.fillRect(-15+sx,-11+sy,30,22)}
   ctx.fillStyle='#e8dcc0';ctx.fillRect(-15,-11,30,22);
@@ -3980,7 +4025,18 @@ function drawVillage(ox,oy){if(vStage<2)return;const X0=HOME.x+ox,Y0=HOME.y+oy;i
   // étape 2 : maisons et potager
   {const [x,y]=P(VILL.garden);ctx.fillStyle='rgba(0,0,0,.15)';ctx.fillRect(x-15,y-10,32,22);ctx.fillStyle='#7a5434';ctx.fillRect(x-16,y-11,32,22);
     for(let r=0;r<4;r++){ctx.fillStyle='#5a3c22';ctx.fillRect(x-14,y-9+r*5.5,28,2);for(let c=0;c<6;c++){ctx.fillStyle=r%2?'#6fb34a':'#4f9a3a';ctx.beginPath();ctx.arc(x-12+c*5,y-8+r*5.5,1.8,0,7);ctx.fill();if(r===1&&c%2)ctx.fillStyle='#e8892a',ctx.fillRect(x-12.5+c*5,y-6.5+r*5.5,1.2,1.6)}}
-    ctx.strokeStyle='#a8713d';ctx.lineWidth=1.2;ctx.strokeRect(x-17,y-12,34,24)}
+    // 3 plates-bandes : sol nu, plant en pousse ou culture mature.
+    for(let i=0;i<3;i++){const px=x-10+i*10,at=HOME_GARDEN[i].at;
+      if(!at)continue;
+      const ripe=dayT-at>=180;
+      ctx.fillStyle=ripe?'#e89945':'#7abe52';
+      const wob=Math.sin(t*2+i)*.6;
+      ctx.beginPath();ctx.ellipse(px, y-2+wob,ripe?3.8:2.4,ripe?3.4:2.6,0,0,Math.PI*2);ctx.fill();
+      if(ripe){ctx.fillStyle='#ffca56';ctx.beginPath();ctx.arc(px-1.6,y-3,1.2,0,7);ctx.arc(px+1.8,y-2,1.2,0,7);ctx.fill()}
+    }
+    ctx.strokeStyle='#a8713d';ctx.lineWidth=1.2;ctx.strokeRect(x-17,y-12,34,24);
+    if(foot.on){ctx.fillStyle='rgba(6,40,56,.82)';ctx.beginPath();ctx.roundRect(x-19,y-27,38,12,5);ctx.fill();ctx.fillStyle='#fff4d7';ctx.font='800 8px Nunito,system-ui';ctx.textAlign='center';ctx.fillText('POTAGER',x,y-19)}}
+
   for(const h of VILL.houses){const [x,y]=P(h);drawHouse(h,x,y)}
   // étape 3 : puits, filets, villageois
   if(vStage>=3){{const [x,y]=P(VILL.well);ctx.fillStyle='rgba(0,0,0,.2)';ctx.beginPath();ctx.arc(x+2,y+2,9,0,7);ctx.fill();ctx.fillStyle='#9aa0a6';ctx.beginPath();ctx.arc(x,y,8.5,0,7);ctx.fill();ctx.fillStyle='#3a6a8a';ctx.beginPath();ctx.arc(x,y,5,0,7);ctx.fill();
@@ -4392,12 +4448,13 @@ function disembark(is){wantCard('etals');document.body.classList.add('onfoot');c
   if(crew.playing>0){crew.playing=0;stopShanty()}foot.land={x:foot.x,y:foot.y};foot.goal=null;
   boat.vx=boat.vy=0;crew.st='foot';ensureTrees(is);if(!is.planted)is.planted=[];spawnGround(is);wantCard('iles');if(AC)tone(520,.08,'sine',.05)}
 function embark(){document.body.classList.remove('onfoot');foot.on=false;PRINTS.length=0;foot.lpx=undefined;foot.goal=null;crew.st='boat';crew.dock=-99;if(AC)tone(620,.08,'sine',.05);saveGame()}
-function footTargets(){const is=foot.is,out=[];if(is.home){out.push({k:'fire',x:CAMP.x,y:CAMP.y});out.push({k:'store',x:STORE_POS.x,y:STORE_POS.y});out.push({k:'oven',x:OVEN_POS.x,y:OVEN_POS.y})}for(const tr of is.trees||[])if(treeAlive(tr))out.push({k:'tree',o:tr,x:tr.x,y:tr.y});for(const pl of is.planted||[])out.push({k:'plant',o:pl,x:pl.x,y:pl.y});for(const g of is.ground||[])out.push({k:'ground',o:g,x:g.x,y:g.y});return out}
+function footTargets(){const is=foot.is,out=[];if(is.home){out.push({k:'fire',x:CAMP.x,y:CAMP.y});out.push({k:'store',x:STORE_POS.x,y:STORE_POS.y});out.push({k:'oven',x:OVEN_POS.x,y:OVEN_POS.y});if(vStage>=2)out.push({k:'garden',x:VILL.garden.x,y:VILL.garden.y})}for(const tr of is.trees||[])if(treeAlive(tr))out.push({k:'tree',o:tr,x:tr.x,y:tr.y});for(const pl of is.planted||[])out.push({k:'plant',o:pl,x:pl.x,y:pl.y});for(const g of is.ground||[])out.push({k:'ground',o:g,x:g.x,y:g.y});return out}
 function footAct(tg){const is=foot.is;
   if(tg.k==='ground'){const g=tg.o,i=is.ground.indexOf(g);if(i<0)return;
     if(g.k==='shell'||g.k==='coin'||g.k==='rareshell'){const v=g.k==='rareshell'?10+((Math.random()*7)|0):g.k==='coin'?4+((Math.random()*5)|0):3+((Math.random()*4)|0);gold+=v;showGold();popText(g.x,g.y-8,'+'+v+' or','255,215,94')}
     else{const id={stone:'r:pierre',mush:'r:champi',flower:'r:fleur',sprout:'r:pousse',wood:'r:bois'}[g.k],n=g.n||1;if(!spaceFor(id,n)){if(fullMsgT<=0)sayFull();return}lootRes(g.x,g.y,id,n)}
     is.ground.splice(i,1);if(AC)tone(980,.06,'sine',.04);return}
+  if(tg.k==='garden'){openGarden();return}
   if(tg.k==='store'){storeTap();return}
   if(tg.k==='oven'){ovenTap();return}
   if(tg.k==='fire'){audio();openFire();return}
@@ -4414,7 +4471,7 @@ function footPlant(x,y){const is=foot.is;if(!resCount('r:pousse')){toast.textCon
   removeRes('r:pousse',1);is.planted.push({x,y,at:dayT,ripeAt:dayT+DAY});popText(x,y-10,'Pousse plantée','140,220,110');if(AC)tone(660,.1,'triangle',.05)}
 function footStep(dt){const is=foot.is;foot.swing=Math.max(0,foot.swing-dt);for(const tr of is.trees||[]){tr.shk=Math.max(0,tr.shk-dt*3);tr.fall=Math.max(0,tr.fall-dt*1.6)}
   let mx=0,my=0;if(touch){const dx=touch.x-touch.ox,dy=touch.y-touch.oy,d=Math.hypot(dx,dy);if(d>10){mx=dx/d*Math.min(1,(d-10)/60);my=dy/d*Math.min(1,(d-10)/60);foot.goal=null}}
-  if(foot.goal&&foot.swing<=0){const g=foot.goal,d=Math.hypot(g.x-foot.x,g.y-foot.y),reach=g.k==='tree'?16:(g.k==='stall'||g.k==='mine')?14:(g.k==='store'||g.k==='oven')?20:g.k==='fire'?28:10;
+  if(foot.goal&&foot.swing<=0){const g=foot.goal,d=Math.hypot(g.x-foot.x,g.y-foot.y),reach=g.k==='tree'?16:(g.k==='stall'||g.k==='mine')?14:(g.k==='store'||g.k==='oven')?20:g.k==='fire'?28:g.k==='garden'?32:10;
     if(d<=reach){foot.goal=null;if(g.k==='plantAt')footPlant(g.x,g.y);else if(g.k==='embark')embark();else if(g.k==='stall'){audio();openShop(g.stall)}else if(g.k==='mine'){audio();openMineMenu()}else footAct(g)}else{const rt=routeTo(g),dd=Math.hypot(rt.x-foot.x,rt.y-foot.y)||1;mx=(rt.x-foot.x)/dd;my=(rt.y-foot.y)/dd}}
   if(!foot.on)return;
   const sp=88,nx=foot.x+mx*sp*dt,ny=foot.y+my*sp*dt;foot.moving=!!(mx||my);if(mx||my){foot.a=Math.atan2(my,mx);foot.walk+=dt*12}
@@ -4641,6 +4698,17 @@ function storeDeposit(i){const it=inv[i];if(!it)return;const left=putIn(STORE.it
   if(AC)tone(520,.06,'triangle',.04);renderStore()}
 function storeTake(i){const it=STORE.items[i];if(!it)return;const left=putIn(inv,INV.slots,Object.assign({},it));if(left===0)STORE.items.splice(i,1);else if(it.id[0]!=='f')it.n=left;else{storeMsg('Ta cale est pleine');return}
   if(AC)tone(660,.06,'triangle',.04);renderStore()}
+function storeResources(){
+ let moved=0;
+ for(let i=inv.length-1;i>=0;i--){
+  const it=inv[i];if(!it.id.startsWith('r:')||BAITS[it.id]||DISH[it.id])continue;
+  const left=putIn(STORE.items,storeSlots(),Object.assign({},it));
+  if(left===0){inv.splice(i,1);moved++}else if(left<it.n){it.n=left;moved++}
+ }
+ if(!moved)storeMsg('Aucune ressource à ranger ou coffre plein');
+ else storeMsg('Ressources rangées · appâts et repas conservés dans la cale');
+ renderStore();saveGame();
+}
 function storeAll(){let moved=0;for(let i=inv.length-1;i>=0;i--){const it=inv[i];if(BAITS[it.id])continue;const left=putIn(STORE.items,storeSlots(),Object.assign({},it));if(left===0){inv.splice(i,1);moved++}else if(it.id[0]!=='f'&&left<it.n){it.n=left;moved++}}
   if(!moved)storeMsg(inv.some(x=>!BAITS[x.id])?'Le coffre est plein':'Rien à déposer (les appâts restent dans la cale)');else if(AC){tone(520,.08,'triangle',.05);tone(780,.1,'triangle',.05,.08)}renderStore()}
 function storeUpgrade(){const c=STORE_UP[STORE.lvl];if(!c)return;if(resCount('r:bois')<c[0]||resCount('r:fer')<c[1]||resCount('r:pierre')<c[2]){storeMsg('Il faut '+c[0]+' bois, '+c[2]+' pierres et '+c[1]+' fer');return}
@@ -4656,7 +4724,7 @@ document.getElementById('stClose').addEventListener('click',()=>{document.getEle
 document.getElementById('mnClose').addEventListener('click',()=>{document.getElementById('mineEl').hidden=true;paused=false});document.getElementById('mineEl').addEventListener('pointerdown',e=>e.stopPropagation());
 document.getElementById('fiClose').addEventListener('click',()=>{document.getElementById('fireEl').hidden=true;paused=false;saveGame()});document.getElementById('fireEl').addEventListener('pointerdown',e=>e.stopPropagation());
 document.getElementById('ovClose').addEventListener('click',()=>{document.getElementById('oven').hidden=true;paused=false;saveGame()});document.getElementById('oven').addEventListener('pointerdown',e=>e.stopPropagation());
-document.getElementById('stAll').addEventListener('click',storeAll);document.getElementById('stUp').addEventListener('click',storeUpgrade);
+document.getElementById('stAll').addEventListener('click',storeAll);document.getElementById('stResources').addEventListener('click',storeResources);document.getElementById('stUp').addEventListener('click',storeUpgrade);
 function storeTap(){if(STORE.built){audio();openStore();return}
   if(resCount('r:bois')<STORE_COST){toast.textContent='Coffre : il faut '+STORE_COST+' bois (coupe des arbres)';toast.style.color='#ffe9b0';biomeBannerT=2.4;return}
   removeRes('r:bois',STORE_COST);STORE.built=true;buyFx();popText(STORE_POS.x,STORE_POS.y-14,'Coffre construit !','255,230,150');parrotSay('coin',true);saveGame()}
@@ -4671,9 +4739,22 @@ function potNeedTxt(nd){return Object.entries(nd).map(([k,n])=>n+' '+POT_NM[k][n
 function potCook(P){if(FIRE.t<=0)return;for(const [k,n] of Object.entries(P.need))if(potHave(k)<n)return;if(!spaceFor(P.id,1)){sayFull();return}
   for(const [k,n] of Object.entries(P.need)){if(k==='fish'){let left=n;for(let i=inv.length-1;i>=0&&left>0;i--){const x=inv[i];if(x.id[0]==='f'&&SPECIES[spOf(x.id)].rar===0){inv.splice(i,1);left--}}}else removeRes(k,n)}
   addRes(P.id,1);if(AC){noise(.4,.05,700);tone(520,.15,'triangle',.05)}popText(CAMP.x,CAMP.y-24,P.name+' prêt !','255,220,160');openFire()}
+let lastCampRest=-10000;
+function campRest(){
+ if(FIRE.t<=45||dayT-lastCampRest<120)return;
+ lastCampRest=dayT;dayT+=45;FIRE.t=Math.max(0,FIRE.t-45);
+ const gained=Math.min(hpMax()-hp,hpMax()*.06);hp=Math.min(hpMax(),hp+gained);
+ showHp();saveGame();
+ popText(CAMP.x,CAMP.y-30,'Repos · +'+Math.round(gained)+' coque','255,224,160');
+ if(AC)tone(440,.2,'triangle',.05);
+ openFire();
+}
 function openFire(){const b=document.getElementById('fiBody');b.innerHTML='';const lit=FIRE.t>0,f=s2=>Math.floor(s2/60)+' min '+String(Math.floor(s2%60)).padStart(2,'0');
   document.getElementById('fiNote').textContent=lit?('Le feu brûle encore '+f(FIRE.t)+'.'):'Le feu est éteint. Ajoute une bûche pour l’allumer.';
   const room=FIRE.t+FIRE.per<=FIRE.max+1;b.appendChild(shopRow('Ajouter une bûche','1 bois = 2 minutes de feu (10 minutes au plus). Tu as '+resCount('r:bois')+' bois.',shopBtn(lit?'Ajouter':'Allumer',resCount('r:bois')>=1&&room,()=>{removeRes('r:bois',1);FIRE.t=Math.min(FIRE.max,FIRE.t+FIRE.per);if(AC){noise(.3,.08,600);tone(300,.1,'triangle',.04)}for(let p=0;p<14;p++)fx.push({x:CAMP.x+(Math.random()-.5)*12,y:CAMP.y-4,vx:(Math.random()-.5)*30,vy:-30-Math.random()*40,life:.8,c:'255,170,60',r:1.6});openFire()}),room?'':'Le feu est au maximum'));
+  const restReady=lit&&FIRE.t>45&&dayT-lastCampRest>=120;
+  b.appendChild(shopRow('Se reposer près du feu','45 secondes de jeu · récupération douce de 6 % de coque · utilisable toutes les 2 minutes.',
+    shopBtn('Se reposer',restReady,campRest),!lit?'Allume le feu':FIRE.t<=45?'Feu insuffisant':!restReady?'Encore '+Math.ceil((120-dayT+lastCampRest)/60)+' min avant un nouveau repos':''));
   const h=document.createElement('h3');h.textContent='Casserole';b.appendChild(h);
   for(const P of POT){const ok=lit&&Object.entries(P.need).every(([k,n])=>potHave(k)>=n);b.appendChild(shopRow(P.name,P.eff+'. Tu en as '+resCount(P.id)+'.',shopBtn('Cuisiner',ok,()=>potCook(P)),lit?('Recette : '+potNeedTxt(P.need)):'Allume le feu pour cuisiner'))}
   document.getElementById('fireEl').hidden=false;paused=true;touch=null}
@@ -5135,7 +5216,7 @@ function lookSection(title,k,list,extra){const e=document.createElement('h3');e.
     else btn=shopBtn('Acheter · '+it.p+' or',gold>=it.p,()=>{gold-=it.p;owned[k].push(i);look[k]=i;saveGame();buyFx()});
     d.append(sw,t);if(btn)d.append(btn);shopBody.appendChild(d)})}
 function renderAtelier(){shopBody.innerHTML='';document.getElementById('shopGold').textContent=gold.toLocaleString('fr-BE')+' or';
-  const p=document.createElement('p');p.style.cssText='margin:0;font-size:13px;color:#5a4428';p.textContent='Apparence uniquement : ton bateau ne devient pas plus fort.';shopBody.appendChild(p);
+  const p=document.createElement('p');p.style.cssText='margin:0;font-size:13px;color:#5a4428';p.textContent='Atelier du village · voiles, coques, pavillons et figures de proue. Ces changements sont cosmétiques, sans gain de puissance.';shopBody.appendChild(p);
   lookSection('Couleur de coque','hull',LOOK_HULL);lookSection('Voile','sail',LOOK_SAIL);lookSection('Pavillon','flag',LOOK_FLAG);
   lookSection('Figure de proue','fig',LOOK_FIG,i=>i>0&&PART.coque<4&&look.fig!==i?'Disponible à partir du Brick (coque niveau 4)':'')}
 function setTab(tb){shopTab=tb;document.getElementById('tabShop').classList.toggle('on',tb==='shop');document.getElementById('tabAtelier').classList.toggle('on',tb==='atelier');renderShop()}
@@ -5160,7 +5241,7 @@ function buyFx(){sellCoins();showGold();renderShop()}
 function renderShop(){if(shopTab==='atelier'){renderAtelier();return}shopBody.innerHTML='';
   document.getElementById('shopGold').textContent=gold.toLocaleString('fr-BE')+' or';
   const hint=document.createElement('p');hint.className='merchantHint';
-  hint.textContent='⚓ Comptoir du port · Répare, vends tes trouvailles, fabrique ou améliore ton équipement.';
+  hint.textContent='⚓ Comptoir du port · Réparer et vendre, fabriquer, puis améliorer. Atelier voisin : personnalisation du navire.';
   shopBody.appendChild(hint);
   const h=(txt)=>{const e=document.createElement('h3');e.textContent=txt;shopBody.appendChild(e)};
   h('Réparation');
@@ -5170,6 +5251,8 @@ function renderShop(){if(shopTab==='atelier'){renderAtelier();return}shopBody.in
   h('Appâts');for(const id of Object.keys(BAITS)){const B=BAITS[id];shopBody.appendChild(shopRow(B.name+' (×'+B.make+')',B.eff+' · Tu en as '+resCount(id),shopBtn('Fabriquer',canCraft(id),()=>{craftBait(id);buyFx()}),'Recette : '+baitRecipe(id)))}
   h('Armement');{const ok=resCount('r:bois')>=3&&resCount('r:poudre')>=2;shopBody.appendChild(shopRow('Baril explosif','Se largue derrière le bateau et explose au passage d’un monstre · Tu en as '+resCount('r:baril'),shopBtn('Fabriquer',ok,()=>{craftBarrel();buyFx()}),'Recette : 3 bois flotté + 2 poudres de soufre'))}
   {const held=SELL_ORDER.filter(id=>resCount(id)>0);h('Revente des ressources');
+    if(held.length){const sum=held.reduce((v,id)=>v+Math.floor(resCount(id)*SELLP[id]),0);
+      shopBody.appendChild(shopRow('Valeur de la collecte','Ressources vendables actuellement : '+sum+' or',null,'Vends par type ci-dessous'))}
     if(!held.length)shopBody.appendChild(shopRow('Rien à vendre','Rapporte des ressources de tes sorties : bois, pierres, fleurs, écailles, fer, perles…',null,''));
     for(const id of held){const n=resCount(id),pu=SELLP[id],tot=Math.floor(n*pu),one=Number.isInteger(pu)?1:2,wrap=document.createElement('span');wrap.className='btn2';
       const b1=shopBtn('Vendre '+one+' · '+Math.round(one*pu)+' or',n>=one,()=>{removeRes(id,one);gold+=Math.round(one*pu);buyFx()});
@@ -5612,7 +5695,7 @@ function fogFromStr(str){fog=new Uint8Array(FOG_N*FOG_N);for(let i=0;i<str.lengt
 
 // ================= SAUVEGARDE AUTOMATIQUE =================
 const SAVE_KEY='mer-partie',SAVE_BACKUP='mer-partie-secours',SAVE_VERSION=2;
-const SAVE_FIELDS=['level','xp','flevel','fxpVal','hp','gold','pt','fire','bs','bf','buff','dayT','carry'];
+const SAVE_FIELDS=['level','xp','flevel','fxpVal','hp','gold','pt','fire','bs','bf','buff','dayT','carry','lastCampRest'];
 function validSave(d){
   if(!d||typeof d!=='object'||Array.isArray(d)||![1,2].includes(d.v))return false;
   for(const k of SAVE_FIELDS)if(d[k]!==undefined&&(!Number.isFinite(d[k])||Math.abs(d[k])>1e10))return false;
@@ -5621,6 +5704,7 @@ function validSave(d){
   for(const k of ['chests','orbs','rocks'])if(d[k]!==undefined&&(!Array.isArray(d[k])||d[k].length>20000))return false;
   for(const k of ['chests','orbs'])if(d[k]&&d[k].some(x=>!x||!Number.isFinite(x.x)||!Number.isFinite(x.y)||Math.abs(x.x)>1e7||Math.abs(x.y)>1e7))return false;
   if(d.fog!==undefined&&(typeof d.fog!=='string'||d.fog.length>100000))return false;
+  if(d.garden!==undefined&&(!Array.isArray(d.garden)||d.garden.length!==3||d.garden.some(v=>!Number.isFinite(v)||v<0||v>1e10)))return false;
   return true;
 }
 function readSave(raw){try{const d=JSON.parse(raw);return validSave(d)?d:null}catch(e){return null}}
@@ -5628,7 +5712,7 @@ function saveGame(){try{
   const atHome=sinking||hp<=0;
   const next=JSON.stringify({v:SAVE_VERSION,world:3,level,xp,flevel,fxpVal,
     hp:atHome?hpMax():hp,parts:PART,boat:atHome?{x:DOCK.x+34,y:DOCK.y,a:0}:{x:boat.x,y:boat.y,a:boat.a},
-    chests:chests.map(c=>({x:c.x,y:c.y,r:c.r,ph:c.ph,keep:!!c.keep})),rocks:ROCKS.map(r=>({a:r.alive,hp:r.hp})),orbs:orbs.map(o=>({x:o.x,y:o.y,v:o.v,ph:o.ph})),inv,flog,gold,rod:rodIdx,bait:baitSel,pt:Math.round(CALM.pt),fire:Math.round(FIRE.t),bs:Math.round(BUFF.speed),bf:Math.round(BUFF.fish),lm:{f:Object.keys(LM.found),t:Object.keys(LM.titles)},oven:OVEN.built,pier:PIER.strong,mine:{d:MX.deep,p:MX.pick,f:Object.keys(MX.fos),t:MX.fosTitle},buff:Math.round(BUFF.ragout),slots:INV.slots,dayT,wx:wx.cur,fog:fogToStr(),kseen:krakenSeen,bseen,bkill,tmap:tmap?{x:tmap.x,y:tmap.y,isl:tmap.isl}:null,daily,look,owned,unlocks,vStage,isl3:islSave(),odd:ODD_SEEN,store:STORE,rumor:RUMOR,evt:{k:EVT.k,end:EVT.end,next:EVT.next,fs:EVT.freeSpin},baitSel,baitInit,carry,iev:IEV?{type:IEV.type,isl:islands.indexOf(IEV.is),a:IEV.a,bx:IEV.bx,by:IEV.by,wx:IEV.wx,wy:IEV.wy,T:IEV.T,mu:IEV.mu,sold:!!IEV.sold,pir:IEV.pir?IEV.pir.map(q=>q.hp):null}:null});
+    chests:chests.map(c=>({x:c.x,y:c.y,r:c.r,ph:c.ph,keep:!!c.keep})),rocks:ROCKS.map(r=>({a:r.alive,hp:r.hp})),orbs:orbs.map(o=>({x:o.x,y:o.y,v:o.v,ph:o.ph})),inv,flog,gold,rod:rodIdx,bait:baitSel,pt:Math.round(CALM.pt),fire:Math.round(FIRE.t),bs:Math.round(BUFF.speed),bf:Math.round(BUFF.fish),lm:{f:Object.keys(LM.found),t:Object.keys(LM.titles)},oven:OVEN.built,pier:PIER.strong,mine:{d:MX.deep,p:MX.pick,f:Object.keys(MX.fos),t:MX.fosTitle},buff:Math.round(BUFF.ragout),slots:INV.slots,dayT,lastCampRest,garden:HOME_GARDEN.map(p=>p.at),wx:wx.cur,fog:fogToStr(),kseen:krakenSeen,bseen,bkill,tmap:tmap?{x:tmap.x,y:tmap.y,isl:tmap.isl}:null,daily,look,owned,unlocks,vStage,isl3:islSave(),odd:ODD_SEEN,store:STORE,rumor:RUMOR,evt:{k:EVT.k,end:EVT.end,next:EVT.next,fs:EVT.freeSpin},baitSel,baitInit,carry,iev:IEV?{type:IEV.type,isl:islands.indexOf(IEV.is),a:IEV.a,bx:IEV.bx,by:IEV.by,wx:IEV.wx,wy:IEV.wy,T:IEV.T,mu:IEV.mu,sold:!!IEV.sold,pir:IEV.pir?IEV.pir.map(q=>q.hp):null}:null});
   if(!readSave(next))return;
   const previous=localStorage.getItem(SAVE_KEY);
   if(previous&&readSave(previous))localStorage.setItem(SAVE_BACKUP,previous);
@@ -5653,7 +5737,10 @@ function loadGame(){let d=getSavedGame();
   if(d.iev&&sameWorld&&islands[d.iev.isl]){const q=d.iev;IEV={type:q.type,is:islands[q.isl],a:q.a,bx:q.bx,by:q.by,wx:q.wx,wy:q.wy,T:q.T,mu:q.mu,dig:0,opened:false,sold:q.sold,offer:null,pir:q.pir?[-1,0,1].map((k2,i)=>({o:k2*.12,hp:q.pir[i],max:Math.max(1,Math.round(2*q.mu)),cd:2+i,flash:0})):null}}if(d.tmap&&sameWorld&&islands[d.tmap.isl])tmap={x:+d.tmap.x,y:+d.tmap.y,isl:d.tmap.isl|0,dig:0};
   setTimeout(()=>{hp=Math.max(1,Math.min(hpMax(),hp));showHp()},0);
   if(typeof d.fog==='string'&&sameWorld)fogFromStr(d.fog);krakenSeen=!!d.kseen&&sameWorld;
-  if(typeof d.dayT==='number')dayT=d.dayT;if(d.wx&&WX_NAME[d.wx]!==undefined){wx.cur=d.wx;wx.k=d.wx==='clear'?0:1}
+  if(typeof d.dayT==='number')dayT=d.dayT;
+  if(Array.isArray(d.garden)&&d.garden.length===3)d.garden.forEach((at,i)=>{HOME_GARDEN[i].at=Math.max(0,Math.min(dayT+180,+at||0))});
+  if(typeof d.lastCampRest==='number')lastCampRest=d.lastCampRest;
+  if(d.wx&&WX_NAME[d.wx]!==undefined){wx.cur=d.wx;wx.k=d.wx==='clear'?0:1}
   rodIdx=Math.max(0,Math.min(RODS.length-1,d.rod|0));if(typeof d.bait==='string'&&BAITS[d.bait])baitSel=d.bait;CALM.pt=d.pt!=null?+d.pt||0:9999;FIRE.t=d.fire!=null?Math.max(0,Math.min(FIRE.max,+d.fire||0)):120;BUFF.speed=Math.max(0,+d.bs||0);BUFF.fish=Math.max(0,+d.bf||0);OVEN.built=!!d.oven;PIER.strong=!!d.pier;if(d.mine&&typeof d.mine==='object'){MX.deep=Math.max(0,Math.min(30,d.mine.d|0));MX.pick=Math.max(0,Math.min(2,d.mine.p|0));MX.fos={};(Array.isArray(d.mine.f)?d.mine.f:[]).forEach(k=>{if(FOSSILS.some(f=>f[0]===k))MX.fos[k]=1});MX.fosTitle=!!d.mine.t}BUFF.ragout=Math.max(0,Math.min(RAGOUT.dur,+d.buff||0));if(d.lm&&typeof d.lm==='object'){LM.found={};LM.titles={};(Array.isArray(d.lm.f)?d.lm.f:[]).forEach(k=>{if(LM_DEF.some(x=>x.id===k))LM.found[k]=1});(Array.isArray(d.lm.t)?d.lm.t:[]).forEach(k=>{if(+k>=0&&+k<4)LM.titles[+k]=1})}
   if(d.parts){for(const k in PART)PART[k]=Math.max(1,Math.min(5,d.parts[k]|0||1))}
   else{const sl=d.slots|0||10;PART.cale=1;PSTAT.cale.forEach((v,i)=>{if(sl>=v)PART.cale=i+1})}
