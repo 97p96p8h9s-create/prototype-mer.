@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="fr">
 <head>
-<title>Prototype Mer 2.0.9</title>
+<title>Prototype Mer 2.1.0</title>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -887,7 +887,7 @@ function updateZoneHint(dt){
  if(foot.on){zoneHintEl.style.opacity='1';const n=foot.is?.ground?.length||0;zoneHintTxt.innerHTML=n?`<b>À pied</b> · ${n} ressources au sol · touche pour récolter`:'<b>À pied</b> · Glisse pour marcher · touche pour agir';return}
  let best=null;for(const is of islands){const d=Math.hypot(boat.x-is.x,boat.y-is.y)-is.r;if(!best||d<best.d)best={is,d}}
  if(best&&best.d<900){const name=islandHudName(best.is),dist=Math.max(0,Math.round(best.d));const near=dist<120;zoneHintEl.style.opacity='1';zoneHintTxt.innerHTML=near?`<b>${name}</b> · <em>Accoste pour explorer</em>`:`<b>${name}</b> · ${dist} m`;return}
- const wxLabel={clear:'Mer calme',rain:'Pluie',fog:'Brouillard',storm:'Tempête',orage:'Orage'}[wx.cur]||'Au large';zoneHintEl.style.opacity='.92';zoneHintTxt.innerHTML=`<b>${wxLabel}</b> · ${BIOME_NAME[biomeAt(boat.x,boat.y)]||'Cap au large'}`;
+ const wxLabel={clear:'Mer calme',rain:'Pluie',fog:'Brouillard',storm:'Tempête',orage:'Orage'}[wx.cur]||'Au large';const gust=wxWindStrength()>.1?' · vent '+wxWindName():'';zoneHintEl.style.opacity='.92';zoneHintTxt.innerHTML=`<b>${wxLabel}</b>${gust} · ${BIOME_NAME[biomeAt(boat.x,boat.y)]||'Cap au large'}`;
 }
 function floatingEnabled(){return matchMedia('(pointer:coarse) and (orientation:portrait)').matches}
 function beginFloating(e){
@@ -978,7 +978,17 @@ function step(dt){
   boat.turn+=(((boat.a-prevA)/Math.max(dt,1e-4))-boat.turn)*Math.min(1,dt*6);
   const fx=Math.cos(boat.a),fy=Math.sin(boat.a);
   boat.vx+=fx*P.acc*sailK()*throttle*sea202WeatherFactor()*dt;boat.vy+=fy*P.acc*sailK()*throttle*sea202WeatherFactor()*dt;
-  if(wx.cur==='storm'){boat.vx+=Math.cos(wx.windA)*38*wx.k*dt;boat.vy+=Math.sin(wx.windA)*38*wx.k*dt}
+  // Rafales et dérive douce : perceptibles à vitesse de croisière, quasiment nulles près du port.
+  const windK=wxWindStrength();
+  if(!foot.on&&!sinking&&windK>.01){
+    const speed0=Math.hypot(boat.vx,boat.vy);
+    const portSafety=Math.max(0,Math.min(1,(Math.hypot(boat.x-DOCK.x,boat.y-DOCK.y)-120)/240));
+    const moving=Math.max(0,Math.min(1,(speed0-4)/35));
+    const gust=.78+.22*Math.sin(t*.85+Math.sin(t*.21)*2);
+    const push=17*windK*portSafety*moving*gust*dt;
+    boat.vx+=Math.cos(wx.windA)*push;
+    boat.vy+=Math.sin(wx.windA)*push;
+  }
   let fwd=boat.vx*fx+boat.vy*fy,lat=-boat.vx*fy+boat.vy*fx;
   lat*=Math.pow(1-(0.98-P.glide*0.9),dt*8);
   fwd*=Math.pow(throttle>0?0.92:0.177,dt);
@@ -5341,7 +5351,26 @@ function updateSea202(dt){if(dt<=0||foot.on||sinking||paused)return;
 }
 function drawSea202(){if(!SEA202.active.length)return;ctx.save();for(const e of SEA202.active){const kind=SEA202_TYPES.find(q=>q.id===e.type);if(!kind)continue;const x=(e.x-cam.x+W/2/zoomCur)*zoomCur,y=(e.y-cam.y+H*.58/zoomCur)*zoomCur;if(x<-60||y<-60||x>W+60||y>H+60)continue;const pulse=1+Math.sin(e.ph*2.5)*.13;ctx.save();ctx.translate(x,y);ctx.scale(pulse,pulse);ctx.fillStyle='rgba(6,35,53,.82)';ctx.strokeStyle=kind.color;ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,21,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle=kind.color;ctx.font='bold 24px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(kind.glyph,0,0);ctx.restore()}ctx.restore()}
 // Effets météorologiques modérés : aucun dégât automatique ajouté.
-function sea202WeatherFactor(){return wx.cur==='storm'?.92:wx.cur==='orage'?.95:1}
+// 2.1.0 : vent léger lié à la route du navire, sans punition excessive.
+function sea202WeatherFactor(){
+ if(!wx.k||wx.cur==='clear')return 1;
+ const angle=Math.cos(boat.a-wx.windA),wet=wx.cur==='rain',rough=wx.cur==='storm'||wx.cur==='orage';
+ // Vent arrière favorable, vent de face légèrement défavorable.
+ const angleK=rough?.085:wet?.035:0;
+ const base=wx.cur==='storm'?.96:wx.cur==='orage'?.975:1;
+ return Math.max(.86,Math.min(1.07,base+(angle*angleK)*wx.k));
+}
+function wxWindStrength(){
+ if(wx.cur==='storm')return wx.k*.9;
+ if(wx.cur==='orage')return wx.k*.65;
+ if(wx.cur==='rain')return wx.k*.25;
+ return 0;
+}
+function wxWindName(){
+ const a=(wx.windA%(Math.PI*2)+Math.PI*2)%(Math.PI*2);
+ const rose=['E','SE','S','SO','O','NO','N','NE'];
+ return rose[Math.round(a/(Math.PI/4))%8];
+}
 
 // ================= JOUR, NUIT ET MÉTÉO =================
 const DAY=600; // une journée complète = 10 minutes
@@ -5387,7 +5416,7 @@ function updateSky(dt){dayT+=dt;
   for(let n=Math.floor(rate*dt+Math.random());n>0;n--)drops2.push({x:Math.random()*(W+200)-100,y:-20,v:pk==='rain'?520+Math.random()*200:60+Math.random()*50,dx:pk==='rain'?(wx.cur==='storm'?-160:-60):(Math.random()-.5)*30,life:pk==='rain'?4:16,pk});
   for(let i=drops2.length-1;i>=0;i--){const d=drops2[i];d.y+=d.v*dt;d.x+=d.dx*dt+(d.pk!=='rain'?Math.sin(t*2+i)*12*dt:0);d.life-=dt;if(d.y>H+20||d.life<=0)drops2.splice(i,1)}
   if(wet>.2&&Math.random()<dt*20*wet)ripples.push({x:boat.x+(Math.random()-.5)*W,y:boat.y+(Math.random()-.5)*H,r:2,life:.6,max:10});
-  const l1=skyLabel(),l2=SEASON_NAME[season()]+' · '+tideLabel()+(wxLabel()?' · '+wxLabel():''),txt=l1+'|'+l2;if(txt!==skyTxt){skyTxt=txt;skyChip.innerHTML='<span></span><small></small>';skyChip.firstChild.textContent=l1;skyChip.lastChild.textContent=l2}}
+  const l1=skyLabel(),l2=SEASON_NAME[season()]+' · '+tideLabel()+(wxLabel()?' · '+wxLabel():'')+(wxWindStrength()>.1?' · Vent '+wxWindName():''),txt=l1+'|'+l2;if(txt!==skyTxt){skyTxt=txt;skyChip.innerHTML='<span></span><small></small>';skyChip.firstChild.textContent=l1;skyChip.lastChild.textContent=l2}}
 function drawSky(ox,oy,z){
   const dk=darkness(),wet=isWet()?wx.k:0;
   // assombrissement : nuit + mauvais temps
