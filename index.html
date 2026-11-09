@@ -3653,7 +3653,7 @@ function drawMerchant(ox,oy,z){
  const X=MERCH.x+ox+walkX,Y=MERCH.y+oy+walkY;
  if(X<-75||X>W+75||Y<-75||Y>H+75){MERCH.scr={x:-999,y:-999};return}
  if(!MERCH.here){MERCH.scr={x:-999,y:-999};return}
- ctx.save();ctx.translate(X,Y);ctx.rotate(-.08);ctx.scale(1.05,1.05);
+ ctx.save();ctx.translate(X,Y);ctx.rotate(-.08);ctx.scale(.85,.85);
  // Ombre et silhouette de même gabarit que les autres personnages.
  ctx.fillStyle='rgba(21,54,36,.20)';ctx.beginPath();ctx.ellipse(0,8,12,5,0,0,Math.PI*2);ctx.fill();
  ctx.fillStyle='#3c2c22';ctx.beginPath();ctx.ellipse(-4,7,3.4,4,0,0,7);ctx.ellipse(4,7,3.4,4,0,0,7);ctx.fill();
@@ -3666,12 +3666,12 @@ function drawMerchant(ox,oy,z){
  ctx.fillStyle='#32261f';for(const xx of [-2.7,2.7]){ctx.beginPath();ctx.arc(xx,-14,1,0,Math.PI*2);ctx.fill()}
  ctx.strokeStyle='#e6bd91';ctx.lineWidth=3;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(7,-2);ctx.lineTo(11,-4+phase*1.5);ctx.stroke();
  ctx.restore();
- MERCH.scr={x:X,y:Y};
+ MERCH.scr={x:X*z,y:Y*z};
  if(dailyReady()){const by=Y-38+Math.sin(t*3)*1.5;
    ctx.fillStyle='#fff7e5';ctx.beginPath();ctx.ellipse(X,by,13,9,0,0,Math.PI*2);ctx.fill();
    ctx.fillStyle='#63472d';ctx.font='bold 12px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('…',X,by-1)}
 }
-function tapMerchant(e){if(MERCH.scr.x<-900||Math.hypot(e.clientX-MERCH.scr.x*zoomCur,e.clientY-MERCH.scr.y*zoomCur)>Math.max(36,30*zoomCur))return false;
+function tapMerchant(e){if(MERCH.scr.x<-900||Math.hypot(e.clientX-MERCH.scr.x,e.clientY-MERCH.scr.y)>Math.max(36,30*zoomCur))return false;
   audio();if(!merchPresent()){toast.textContent='Le marin revient au matin';toast.style.color='#ffe9b0';biomeBannerT=2;return true}
   if(!docked()){toast.textContent='Accoste pour parler au marin';toast.style.color='#ffe9b0';biomeBannerT=2;return true}
   openDaily();return true}
@@ -3685,21 +3685,8 @@ const MARKET={x:HOME.x+HOME.r*.66,y:HOME.y,stalls:[
 const MK_WP=[[-.05,-.12],[.05,.1],[.14,-.02],[-.08,.05],[.1,-.18],[.08,.18]].map(([a,b])=>[HOME.x+HOME.r*(.66+a),HOME.y+HOME.r*b]);
 function fireSpot(){const a=Math.random()*Math.PI*2;return [CAMP.x+Math.cos(a)*30,CAMP.y+Math.sin(a)*26]}
 // Zone sûre des villageois : marge intérieure conservatrice par rapport au rivage.
-function npcPassable(x,y){return Number.isFinite(x)&&Number.isFinite(y)&&inIsland(HOME,x,y,.82)&&!blocked(x,y,5)}
-function npcSafePoint(x,y){
- if(npcPassable(x,y))return [x,y];
- for(let r=10;r<=96;r+=10)for(let i=0;i<16;i++){const a=i*Math.PI/8,px=x+Math.cos(a)*r,py=y+Math.sin(a)*r;if(npcPassable(px,py))return [px,py]}
- return [HOME.x,HOME.y];
-}
-function npcSafeStep(f,dx,dy,speed,dt){
- const step=Math.min(Math.max(dt,0),.05)*speed;
- if(!npcPassable(f.x,f.y)){[f.x,f.y]=npcSafePoint(f.x,f.y);return}
- const x=f.x+dx*step,y=f.y+dy*step;
- if(npcPassable(x,y)){f.x=x;f.y=y;return}
- if(npcPassable(x,f.y)){f.x=x;return}
- if(npcPassable(f.x,y)){f.y=y;return}
- f.wait=Math.max(f.wait,1);f.tx=f.x;f.ty=f.y;
-}
+function npcSafePoint(x,y){const dx=x-HOME.x,dy=y-HOME.y,d=Math.hypot(dx,dy),limit=HOME.r*.70;if(!Number.isFinite(d))return [HOME.x,HOME.y];return d<=limit?[x,y]:[HOME.x+dx/d*limit,HOME.y+dy/d*limit]}
+function npcSafeStep(f,dx,dy,speed,dt){const step=Math.min(Math.max(dt,0),.05)*speed;[f.x,f.y]=npcSafePoint(f.x+dx*step,f.y+dy*step)}
 function updateMarket(dt){for(const [i,f] of MARKET.folk.entries()){f.ph+=dt;if(f.wait>0){f.wait-=dt;if(f.wait<=0){const w=darkness()>.65?[MARKET.x-17+i*7,MARKET.y+20+i*8]:FIRE.t>0&&Math.random()<.45?fireSpot():MK_WP[(Math.random()*MK_WP.length)|0];[f.tx,f.ty]=npcSafePoint(w[0],w[1])}continue}
     const dx=f.tx-f.x,dy=f.ty-f.y,d=Math.hypot(dx,dy);if(d<1.5){f.wait=2+Math.random()*3;f.social=2.5;continue}npcSafeStep(f,dx/d,dy/d,14,dt);f.social=0;f.a=Math.atan2(dy,dx)}
   for(const g of MARKET.gulls){if(g.f>0)g.f-=dt;else if(Math.hypot(boat.x-g.x,boat.y-g.y)<60||Math.random()<dt*.05)g.f=1.2}}
@@ -3772,7 +3759,6 @@ function drawStallTo(g,st,dkOn){const dk=dkOn?1:0;g.save();g.scale(1.5,1.5);
   g.restore()}
 // 2.1.9 — plateformes marchandes sur pilotis (habillage visuel, sans deplacer les interactions).
 // Vie du village : reactions visuelles discretes, sans etat persistant.
-const NPC_VISUAL_SCALE=2.25; // Echelle partagee des habitants du village et du marche.
 function drawVillagerReaction(f,X,Y,i){
  if(!foot.on||!foot.is||!foot.is.home)return;
  const distance=Math.hypot(foot.x-f.x,foot.y-f.y);
@@ -3836,7 +3822,7 @@ function drawMarket(ox,oy,z){const X0=MARKET.x+ox,Y0=MARKET.y+oy;if(X0<-160||X0>
     ctx.fillStyle=cols[i%cols.length];ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+5+sw,y+3);ctx.lineTo(x,y+5);ctx.fill()}
   }
   // passants
-  for(const [i,f] of MARKET.folk.entries()){const X=f.x+ox,Y=f.y+oy,mv=f.wait<=0,stp=mv?Math.sin(f.ph*10):0;ctx.save();ctx.translate(X,Y);ctx.rotate(Math.sin(f.ph*5)*.045);ctx.scale(NPC_VISUAL_SCALE,NPC_VISUAL_SCALE);
+  for(const [i,f] of MARKET.folk.entries()){const X=f.x+ox,Y=f.y+oy,mv=f.wait<=0,stp=mv?Math.sin(f.ph*10):0;ctx.save();ctx.translate(X,Y);ctx.rotate(f.a||0);ctx.scale(2.25,2.25);
     ctx.fillStyle='rgba(0,0,0,.18)';ctx.beginPath();ctx.ellipse(1,1.5,4.5,3.8,0,0,7);ctx.fill();
     ctx.fillStyle='#3a2a1a';ctx.beginPath();ctx.ellipse(-1.5+stp*1.5,-1.6,1.4,1,0,0,7);ctx.ellipse(-1.5-stp*1.5,1.6,1.4,1,0,0,7);ctx.fill();
     ctx.fillStyle=f.col;ctx.beginPath();ctx.ellipse(-.4,0,3,4,0,0,7);ctx.fill();ctx.fillStyle='#e9bf95';ctx.beginPath();ctx.arc(.6,0,2.1,0,7);ctx.fill();ctx.fillStyle='#5a3a20';ctx.beginPath();ctx.arc(.2,0,2.2,Math.PI*.5,Math.PI*1.5);ctx.fill();ctx.restore();drawVillagerReaction(f,X,Y,i)}
@@ -4198,10 +4184,9 @@ function homeGroundSprite(){
  g.setTransform(1,0,0,1,0,0);HOME_GROUND_SPRITE=cv;return cv;
 }
 function drawHomeGround(ox,oy){
- const size=560*Math.min(1.34,Math.max(1,HOME_K/1.5));
- const x=HOME.x+ox-size/2,y=HOME.y+oy-size/2;
- if(x>W+5||y>H+5||x+size< -5||y+size< -5)return;
- ctx.drawImage(homeGroundSprite(),x,y,size,size);
+ const x=HOME.x+ox-280,y=HOME.y+oy-280;
+ if(x>W+5||y>H+5||x+560< -5||y+560< -5)return;
+ ctx.drawImage(homeGroundSprite(),x,y);
 }
 function drawHomePaths(ox,oy){
  if(HOME.x+ox<-300||HOME.x+ox>W+300||HOME.y+oy<-300||HOME.y+oy>H+300)return;
@@ -4396,7 +4381,7 @@ function drawVillage(ox,oy){if(vStage<2)return;const X0=HOME.x+ox,Y0=HOME.y+oy;i
     {const [x,y]=P(VILL.nets);ctx.strokeStyle='#6b4423';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x-16,y-6);ctx.lineTo(x-16,y+6);ctx.moveTo(x+16,y-6);ctx.lineTo(x+16,y+6);ctx.stroke();
       ctx.strokeStyle='rgba(120,100,70,.8)';ctx.lineWidth=.7;const sw=Math.sin(t*2)*1.5;for(let i=0;i<=8;i++){ctx.beginPath();ctx.moveTo(x-16+i*4,y-5);ctx.quadraticCurveTo(x-16+i*4+sw,y,x-16+i*4,y+5);ctx.stroke()}
       for(let j=-1;j<=1;j++){ctx.beginPath();ctx.moveTo(x-16,y+j*4);ctx.quadraticCurveTo(x,y+j*4+3+sw,x+16,y+j*4);ctx.stroke()}}
-    for(const [i,f] of VILL.folk.entries()){const X=f.x+ox,Y=f.y+oy,stp=f.wait<=0?Math.sin(f.ph*10):0;ctx.save();ctx.translate(X,Y);ctx.rotate(Math.sin(f.ph*5)*.045);ctx.scale(NPC_VISUAL_SCALE,NPC_VISUAL_SCALE);
+    for(const [i,f] of VILL.folk.entries()){const X=f.x+ox,Y=f.y+oy,stp=f.wait<=0?Math.sin(f.ph*10):0;ctx.save();ctx.translate(X,Y);ctx.rotate(f.a||0);ctx.scale(2.25,2.25);
       ctx.fillStyle='rgba(0,0,0,.18)';ctx.beginPath();ctx.ellipse(1,1.5,4.5,3.8,0,0,7);ctx.fill();ctx.fillStyle='#3a2a1a';ctx.beginPath();ctx.ellipse(-1.5+stp*1.5,-1.6,1.4,1,0,0,7);ctx.ellipse(-1.5-stp*1.5,1.6,1.4,1,0,0,7);ctx.fill();
       ctx.fillStyle=f.col;ctx.beginPath();ctx.ellipse(-.4,0,3,4,0,0,7);ctx.fill();ctx.fillStyle='#e9bf95';ctx.beginPath();ctx.arc(.6,0,2.1,0,7);ctx.fill();ctx.fillStyle='#d8c070';ctx.beginPath();ctx.arc(.3,0,2.6,0,7);ctx.fill();ctx.restore();drawVillagerReaction(f,X,Y,i+3)}}
   // étape 4 : phare
