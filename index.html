@@ -591,7 +591,20 @@ const TINT_C=62.5,TINT_N=Math.ceil(WORLD/TINT_C),tintCv=document.createElement('
 // Types d'îles tropicales répartis à tour de rôle pour qu'on les croise tous
 {let li=0;islands.filter(is=>is.b===0&&!is.home).forEach(is=>{if(li++%3===1)is.light=true});let lg=0;islands.filter(is=>is.b===2).forEach(is=>{if(lg++%2===0)is.light=true})}
 {const KINDS=['coco','ruines','epave','roche'];let k=0;islands.filter(is=>is.b===0&&!is.home).sort((a,b)=>Math.hypot(a.x-HOME.x,a.y-HOME.y)-Math.hypot(b.x-HOME.x,b.y-HOME.y)).forEach(is=>{is.kind=KINDS[k++%4]})}
-function radiusAt(is,a){const n=is.pts.length;let t=((a/(Math.PI*2))%1+1)%1*n;const i=Math.floor(t),f=t-i;const s=f*f*(3-2*f);return is.pts[i]*(1-s)+is.pts[(i+1)%n]*s}
+function radiusAt(is,a){
+  // 2.2.1: certains objets temporaires d'île ne possèdent pas de contour `pts`.
+  // Utiliser leur rayon circulaire plutôt que faire échouer tout le démarrage.
+  const fallback=is&&Number.isFinite(is.r)&&is.r>0?is.r:0;
+  const pts=is&&Array.isArray(is.pts)?is.pts:null;
+  if(!pts||pts.length<2)return fallback;
+  const n=pts.length;
+  const angle=Number.isFinite(a)?a:0;
+  const t=((angle/(Math.PI*2))%1+1)%1*n;
+  const i=Math.floor(t),f=t-i,s=f*f*(3-2*f);
+  const r0=Number.isFinite(pts[i])?pts[i]:fallback;
+  const r1=Number.isFinite(pts[(i+1)%n])?pts[(i+1)%n]:fallback;
+  return r0*(1-s)+r1*s;
+}
 
 // --- Rendu des îles une seule fois (sprites) ---
 function blob(c,is,cx,cy,k,jit){c.beginPath();for(let i=0;i<=72;i++){const a=i/72*Math.PI*2,r=radiusAt(is,a)*k+(jit?Math.sin(a*jit[0]+jit[1])*jit[2]:0);c.lineTo(cx+Math.cos(a)*r,cy+Math.sin(a)*r)}c.closePath()}
