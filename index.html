@@ -3797,6 +3797,26 @@ function drawStallTo(g,st,dkOn){const dk=dkOn?1:0;g.save();g.scale(1.5,1.5);
   g.restore()}
 // 2.1.9 — plateformes marchandes sur pilotis (habillage visuel, sans deplacer les interactions).
 // Vie du village : reactions visuelles discretes, sans etat persistant.
+// 2.2.3 — habitants : silhouette et détails cohérents avec le héros, sans nouveau sprite ni sauvegarde.
+function drawRoleVillager(f,X,Y,i){
+ const role=['marchand','pecheur','artisan','jardinier'][i%4];
+ const walking=f.wait<=0,step=walking?Math.sin(f.ph*10):0;
+ ctx.save();ctx.translate(X,Y);ctx.rotate((f.a||0)+Math.PI/2);
+ ctx.scale(1.9,1.9);
+ ctx.fillStyle='rgba(0,0,0,.20)';ctx.beginPath();ctx.ellipse(0,4,4.5,2,0,0,7);ctx.fill();
+ ctx.fillStyle='#49372b';ctx.fillRect(-3,1+step*.7,2.4,3.5);ctx.fillRect(.6,1-step*.7,2.4,3.5);
+ ctx.fillStyle=role==='jardinier'?'#568348':role==='pecheur'?'#357b9d':role==='artisan'?'#91623d':f.col||'#aa6442';
+ ctx.beginPath();ctx.roundRect(-4,-4,8,7,2);ctx.fill();
+ ctx.fillStyle='#e7b88c';ctx.beginPath();ctx.arc(0,-5,3.1,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle='#49372b';ctx.fillRect(-2.6,-6.7,5.2,1.4);
+ if(role==='jardinier'||role==='pecheur'){ctx.fillStyle=role==='jardinier'?'#d7b36d':'#365b78';ctx.fillRect(-4,-8,8,1.5);ctx.fillRect(-2.8,-9.5,5.6,2)}
+ if(role==='artisan'){ctx.fillStyle='#c7a47d';ctx.fillRect(-2.4,-2,4.8,5);ctx.fillStyle='#b0b9c1';ctx.fillRect(4,-1,1.5,4)}
+ if(role==='marchand'){ctx.fillStyle='#d5ae55';ctx.fillRect(-1,-3,2,5);ctx.fillStyle='#7c5333';ctx.fillRect(3,-1,2.5,3)}
+ if(role==='pecheur'){ctx.strokeStyle='#c9ad76';ctx.lineWidth=.8;ctx.beginPath();ctx.moveTo(4,0);ctx.lineTo(6,-7);ctx.stroke()}
+ if(role==='jardinier'){ctx.fillStyle='#b7894d';ctx.beginPath();ctx.ellipse(4,0,2,2.5,0,0,7);ctx.fill()}
+ ctx.restore();
+ drawVillagerReaction(f,X,Y,i);
+}
 function drawVillagerReaction(f,X,Y,i){
  if(!foot.on||!foot.is||!foot.is.home)return;
  const distance=Math.hypot(foot.x-f.x,foot.y-f.y);
@@ -3859,11 +3879,8 @@ function drawMarket(ox,oy,z){const X0=MARKET.x+ox,Y0=MARKET.y+oy;if(X0<-160||X0>
    for(let i=1;i<9;i++){const q=i/9,x=ax+24*q*(1-q),y=ay-4+(by-ay)*q,sw=Math.sin(t*4+i)*.7;
     ctx.fillStyle=cols[i%cols.length];ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+5+sw,y+3);ctx.lineTo(x,y+5);ctx.fill()}
   }
-  // passants
-  for(const [i,f] of MARKET.folk.entries()){const X=f.x+ox,Y=f.y+oy,mv=f.wait<=0,stp=mv?Math.sin(f.ph*10):0;ctx.save();ctx.translate(X,Y);ctx.rotate(f.a||0);ctx.scale(2.25,2.25);
-    ctx.fillStyle='rgba(0,0,0,.18)';ctx.beginPath();ctx.ellipse(1,1.5,4.5,3.8,0,0,7);ctx.fill();
-    ctx.fillStyle='#3a2a1a';ctx.beginPath();ctx.ellipse(-1.5+stp*1.5,-1.6,1.4,1,0,0,7);ctx.ellipse(-1.5-stp*1.5,1.6,1.4,1,0,0,7);ctx.fill();
-    ctx.fillStyle=f.col;ctx.beginPath();ctx.ellipse(-.4,0,3,4,0,0,7);ctx.fill();ctx.fillStyle='#e9bf95';ctx.beginPath();ctx.arc(.6,0,2.1,0,7);ctx.fill();ctx.fillStyle='#5a3a20';ctx.beginPath();ctx.arc(.2,0,2.2,Math.PI*.5,Math.PI*1.5);ctx.fill();ctx.restore();drawVillagerReaction(f,X,Y,i)}
+  // passants — rôles et animations légères
+  for(const [i,f] of MARKET.folk.entries())drawRoleVillager(f,f.x+ox,f.y+oy,i);
   // mouettes
   for(const g of MARKET.gulls){const X=g.x+ox,Y=g.y+oy-(g.f>0?Math.sin((1.2-g.f)/1.2*Math.PI)*16:0)-5;const fl=g.f>0?Math.sin(t*25)*3:0;
     ctx.fillStyle='#ffffff';ctx.beginPath();ctx.ellipse(X,Y,3,2,0,0,7);ctx.fill();ctx.strokeStyle='#ffffff';ctx.lineWidth=1.4;ctx.beginPath();ctx.moveTo(X-1,Y);ctx.lineTo(X-4,Y-1-fl);ctx.moveTo(X+1,Y);ctx.lineTo(X+4,Y-1-fl);ctx.stroke();ctx.fillStyle='#e8a030';ctx.fillRect(X+2.6,Y-.4,1.4,.8)}
@@ -4419,9 +4436,7 @@ function drawVillage(ox,oy){if(vStage<2)return;const X0=HOME.x+ox,Y0=HOME.y+oy;i
     {const [x,y]=P(VILL.nets);ctx.strokeStyle='#6b4423';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x-16,y-6);ctx.lineTo(x-16,y+6);ctx.moveTo(x+16,y-6);ctx.lineTo(x+16,y+6);ctx.stroke();
       ctx.strokeStyle='rgba(120,100,70,.8)';ctx.lineWidth=.7;const sw=Math.sin(t*2)*1.5;for(let i=0;i<=8;i++){ctx.beginPath();ctx.moveTo(x-16+i*4,y-5);ctx.quadraticCurveTo(x-16+i*4+sw,y,x-16+i*4,y+5);ctx.stroke()}
       for(let j=-1;j<=1;j++){ctx.beginPath();ctx.moveTo(x-16,y+j*4);ctx.quadraticCurveTo(x,y+j*4+3+sw,x+16,y+j*4);ctx.stroke()}}
-    for(const [i,f] of VILL.folk.entries()){const X=f.x+ox,Y=f.y+oy,stp=f.wait<=0?Math.sin(f.ph*10):0;ctx.save();ctx.translate(X,Y);ctx.rotate(f.a||0);ctx.scale(2.25,2.25);
-      ctx.fillStyle='rgba(0,0,0,.18)';ctx.beginPath();ctx.ellipse(1,1.5,4.5,3.8,0,0,7);ctx.fill();ctx.fillStyle='#3a2a1a';ctx.beginPath();ctx.ellipse(-1.5+stp*1.5,-1.6,1.4,1,0,0,7);ctx.ellipse(-1.5-stp*1.5,1.6,1.4,1,0,0,7);ctx.fill();
-      ctx.fillStyle=f.col;ctx.beginPath();ctx.ellipse(-.4,0,3,4,0,0,7);ctx.fill();ctx.fillStyle='#e9bf95';ctx.beginPath();ctx.arc(.6,0,2.1,0,7);ctx.fill();ctx.fillStyle='#d8c070';ctx.beginPath();ctx.arc(.3,0,2.6,0,7);ctx.fill();ctx.restore();drawVillagerReaction(f,X,Y,i+3)}}
+    for(const [i,f] of VILL.folk.entries())drawRoleVillager(f,f.x+ox,f.y+oy,i+3)}
   // étape 4 : phare
   if(vStage>=4){const [x,y]=P(VILL.light);lighthouse(ctx,x,y)}
   // Étape 5 : une épave reconvertie en chantier naval, sans changer son emplacement.
