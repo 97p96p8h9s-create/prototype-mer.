@@ -3754,6 +3754,20 @@ function drawStallTo(g,st,dkOn){const dk=dkOn?1:0;g.save();g.scale(1.5,1.5);
   // lanterne
   g.fillStyle='#3a2a1a';g.fillRect(14,-17,4,4);g.fillStyle=dk>.15?'#ffe08a':'#c9b27a';g.fillRect(14.8,-16.2,2.4,2.4);
   g.restore()}
+// 2.1.9 — plateformes marchandes sur pilotis (habillage visuel, sans deplacer les interactions).
+function drawMarketDecks(ox,oy){
+ const spots=[...MARKET.stalls.map(st=>({x:st.x+ox,y:st.y+oy,w:79,h:74})),{x:MARKET.x+ox+84,y:MARKET.y+oy+45,w:77,h:70}];
+ ctx.save();
+ for(const p of spots){
+  if(p.x<-110||p.x>W+110||p.y<-110||p.y>H+110)continue;
+  ctx.fillStyle='rgba(7,47,57,.23)';ctx.beginPath();ctx.ellipse(p.x+3,p.y+12,p.w*.55,p.h*.49,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#674527';ctx.fillRect(p.x-p.w/2-3,p.y-p.h/2-3,p.w+6,p.h+6);
+  ctx.fillStyle='#ad7845';ctx.fillRect(p.x-p.w/2,p.y-p.h/2,p.w,p.h);
+  for(let i=-p.h/2+6;i<p.h/2;i+=9){ctx.fillStyle=i%2?'#c89456':'#bb8650';ctx.fillRect(p.x-p.w/2+3,p.y+i,p.w-6,7);ctx.strokeStyle='rgba(69,42,25,.45)';ctx.lineWidth=.8;ctx.beginPath();ctx.moveTo(p.x-p.w/2+3,p.y+i+7);ctx.lineTo(p.x+p.w/2-3,p.y+i+7);ctx.stroke()}
+  for(const dx of [-p.w/2+3,p.w/2-3])for(const dy of [-p.h/2+3,p.h/2-3]){ctx.fillStyle='#674427';ctx.beginPath();ctx.arc(p.x+dx,p.y+dy,4.5,0,Math.PI*2);ctx.fill();ctx.fillStyle='#d5a66b';ctx.beginPath();ctx.arc(p.x+dx-1,p.y+dy-1,1.4,0,Math.PI*2);ctx.fill()}
+ }
+ ctx.restore();
+}
 function drawMarket(ox,oy,z){const X0=MARKET.x+ox,Y0=MARKET.y+oy;if(X0<-160||X0>W+160||Y0<-160||Y0>H+160){MARKET.scr=[];return}
   const dk=darkness();
   // place pavée
@@ -3777,6 +3791,8 @@ function drawMarket(ox,oy,z){const X0=MARKET.x+ox,Y0=MARKET.y+oy;if(X0<-160||X0>
   }
   // Large dalle centrale et enseigne textile : renforce la lecture du marché.
   ctx.save();ctx.globalAlpha=.85;ctx.fillStyle='#e2c394';ctx.beginPath();ctx.ellipse(X0+5,Y0+12,52,57,0,0,Math.PI*2);ctx.fill();ctx.restore();
+  // Plateformes sous les stands, sans modifier leurs zones tactiles.
+  drawMarketDecks(ox,oy);
   // étals
   for(const st of MARKET.stalls)drawStall(st,st.x+ox,st.y+oy);
   // guirlande de fanions au-dessus de l'entrée du ponton
