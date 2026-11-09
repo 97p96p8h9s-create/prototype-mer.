@@ -4144,36 +4144,6 @@ function homeGroundSprite(){
   ellipse(x,y,1.35,1.35,'#e4a63e');
  }
 
- // 2.1.9 — place pavée et sentiers peints dans le sprite mis en cache.
- // Purement décoratif : aucun changement de collision, de position ou de sauvegarde.
- g.save();
- g.lineCap='round';g.lineJoin='round';
- const trail=(pts,w)=>{
-   g.beginPath();pts.forEach((p,i)=>i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]));
-   g.strokeStyle='rgba(48,68,40,.38)';g.lineWidth=w+9;g.stroke();
-   g.strokeStyle='#ad8958';g.lineWidth=w+4;g.stroke();
-   g.strokeStyle='#e8c78e';g.lineWidth=w;g.stroke();
-   g.strokeStyle='rgba(255,241,194,.48)';g.lineWidth=2;g.setLineDash([3,12]);g.stroke();g.setLineDash([]);
- };
- trail([[-105,70],[-58,38],[-18,22],[35,8],[88,-22]],14);
- trail([[-48,37],[-65,-14],[-92,-69]],11);
- trail([[-18,22],[-6,78],[24,110]],10);
- // Petite place centrale en pavés, avec anneaux et joints discrets.
- g.fillStyle='#d5ae75';g.beginPath();g.ellipse(14,13,35,25,-.18,0,Math.PI*2);g.fill();
- g.strokeStyle='rgba(103,75,49,.56)';g.lineWidth=3;g.stroke();
- for(let row=-2;row<=2;row++)for(let col=-3;col<=3;col++){
-   const x=14+col*9+(row%2)*4,y=13+row*8;
-   if(((x-14)/32)**2+((y-13)/22)**2>1)continue;
-   g.fillStyle=(row+col)%3===0?'rgba(255,237,196,.6)':'rgba(139,99,59,.25)';
-   g.fillRect(x-3,y-2.5,7,5);
- }
- // Herbes, petits galets et fleurs en bordure des chemins.
- for(let i=0;i<175;i++){
-   const a=rand()*Math.PI*2,r=72+rand()*66,x=Math.cos(a)*r-12,y=Math.sin(a)*r;
-   if(rand()<.36){g.fillStyle='rgba(244,224,173,.8)';g.beginPath();g.ellipse(x,y,1.4+rand()*2.3,1+rand(),rand(),0,Math.PI*2);g.fill();}
-   else {g.strokeStyle=rand()<.5?'#317c4b':'#8ec26b';g.lineWidth=1.3;g.beginPath();g.moveTo(x,y+3);g.lineTo(x-2,y-3);g.moveTo(x,y+3);g.lineTo(x+2,y-4);g.stroke();}
- }
- g.restore();
  g.setTransform(1,0,0,1,0,0);HOME_GROUND_SPRITE=cv;return cv;
 }
 function drawHomeGround(ox,oy){
@@ -4182,21 +4152,22 @@ function drawHomeGround(ox,oy){
  ctx.drawImage(homeGroundSprite(),x,y);
 }
 function drawHomePaths(ox,oy){
- if(HOME.x+ox<-260||HOME.x+ox>W+260||HOME.y+oy<-260||HOME.y+oy>H+260)return;
- // Chemins purement visuels : aucune modification des collisions ou des autres îles.
- const road=(pts)=>{ctx.beginPath();pts.forEach((q,i)=>{const x=q.x+ox,y=q.y+oy;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)});
-   ctx.strokeStyle='rgba(55,64,32,.45)';ctx.lineWidth=32;ctx.lineJoin='round';ctx.lineCap='round';ctx.stroke();
-   ctx.strokeStyle='#9b7547';ctx.lineWidth=27;ctx.stroke();
-   ctx.strokeStyle='#e7bc78';ctx.lineWidth=22;ctx.stroke();
-   ctx.strokeStyle='rgba(255,237,181,.85)';ctx.lineWidth=2.2;ctx.setLineDash([2,8]);ctx.stroke();ctx.setLineDash([]);
-   ctx.strokeStyle='rgba(98,92,63,.33)';ctx.lineWidth=1;
-   for(let n=1;n<pts.length;n++){
-    const a=pts[n-1],b=pts[n],dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1,nx=-dy/len,ny=dx/len;
-    for(let k=12;k<len-8;k+=17){const u=k/len,px=a.x+dx*u+ox,py=a.y+dy*u+oy;
-     for(const side of [-1,1]){ctx.beginPath();ctx.ellipse(px+side*nx*7,py+side*ny*7,2.1,1.2,.3,0,Math.PI*2);ctx.stroke()}
-    }
-   }
-  };
+ if(HOME.x+ox<-300||HOME.x+ox>W+300||HOME.y+oy<-300||HOME.y+oy>H+300)return;
+ // 2.1.9 : un seul reseau de sentiers naturels reliant les lieux existants.
+ // Traces souples, terre mate et bords fondus : aucun impact sur les collisions.
+ const road=(pts)=>{
+  ctx.save();ctx.lineJoin='round';ctx.lineCap='round';
+  const trace=()=>{ctx.beginPath();pts.forEach((pt,i)=>{
+   const x=pt.x+ox,y=pt.y+oy;
+   if(i===0)ctx.moveTo(x,y);else if(i===1)ctx.lineTo(x,y);
+   else {const prev=pts[i-1];ctx.quadraticCurveTo(prev.x+ox,prev.y+oy,(prev.x+pt.x)/2+ox,(prev.y+pt.y)/2+oy)}
+  });const last=pts[pts.length-1];ctx.lineTo(last.x+ox,last.y+oy)};
+  trace();ctx.strokeStyle='rgba(58,93,46,.24)';ctx.lineWidth=22;ctx.stroke();
+  trace();ctx.strokeStyle='rgba(133,101,60,.32)';ctx.lineWidth=16;ctx.stroke();
+  trace();ctx.strokeStyle='#c8a474';ctx.lineWidth=12;ctx.stroke();
+  trace();ctx.strokeStyle='rgba(231,200,151,.32)';ctx.lineWidth=6;ctx.stroke();
+  ctx.restore();
+ };
  road([MARKET,VH(30,0),CAMP,VH(-12,-14),VILL.garden]);
  road([CAMP,VH(-12,-26),MINE]);
  if(vStage>=3)road([VILL.garden,VILL.well]);
