@@ -3707,15 +3707,21 @@ function npcSafePoint(x,y){
  const limit=Math.max(0,Math.min(HOME.r*.78,shore*.82-8));
  return d<=limit?[x,y]:[HOME.x+dx/d*limit,HOME.y+dy/d*limit];
 }
+function npcOnLand(x,y){
+ if(!Number.isFinite(x)||!Number.isFinite(y))return false;
+ const dx=x-HOME.x,dy=y-HOME.y,d=Math.hypot(dx,dy);
+ const coast=radiusAt(islands[0],Math.atan2(dy,dx));
+ return d<Math.max(0,Math.min(HOME.r*.78,coast*.82-8));
+}
 function npcSafeStep(f,dx,dy,speed,dt){
  // 2.2.0 etape 1 : chaque pas reste sur la terre et hors des batiments.
  const step=Math.min(Math.max(dt,0),.05)*speed;
  if(!Number.isFinite(dx)||!Number.isFinite(dy)||step<=0)return;
  const nx=f.x+dx*step,ny=f.y+dy*step;
- if(inIsland(HOME,nx,ny,.85)&&!blocked(nx,ny,3)){f.x=nx;f.y=ny;return}
+ if(npcOnLand(nx,ny)&&!blocked(nx,ny,3)){f.x=nx;f.y=ny;return}
  // Essai sur chaque axe pour contourner un obstacle sans teleportation.
- if(inIsland(HOME,nx,f.y,.85)&&!blocked(nx,f.y,3)){f.x=nx;return}
- if(inIsland(HOME,f.x,ny,.85)&&!blocked(f.x,ny,3)){f.y=ny;return}
+ if(npcOnLand(nx,f.y)&&!blocked(nx,f.y,3)){f.x=nx;return}
+ if(npcOnLand(f.x,ny)&&!blocked(f.x,ny,3)){f.y=ny;return}
  // L'habitant patiente avant de choisir une nouvelle destination.
  f.wait=1.2;f.tx=f.x;f.ty=f.y;
 }
