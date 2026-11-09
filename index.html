@@ -568,8 +568,8 @@ for(let i=0;i<3000&&islands.length<50;i++){
   for(let k=0;k<n;k++)pts.push(r*(0.8+rnd()*0.35));
   islands.push({x,y,r,pts});
 }
-// île principale agrandie de 50 % (après la génération, pour ne pas déplacer les autres îles)
-const HOME_K=1.5,CAB=[.27,-.13]; // CAB : position de la cabane (fraction du rayon)
+// île principale : +25 % de rayon par rapport à la version précédente, autres îles inchangées
+const HOME_K=1.875,CAB=[.27,-.13]; // CAB : position de la cabane (fraction du rayon)
 HOME.r*=HOME_K;islands[0].r=HOME.r;islands[0].pts=islands[0].pts.map(v=>v*HOME_K);
 const DOCK={x:HOME.x+HOME.r*1.0+70,y:HOME.y}; // bout du ponton
 // --- Biomes en anneaux autour de l'île de référence ---
