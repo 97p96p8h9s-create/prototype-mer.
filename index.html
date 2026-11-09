@@ -3642,10 +3642,32 @@ setInterval(checkDay,60000);
 
 // ================= VENDEUR AMBULANT (défis du jour) =================
 // À l'entrée du ponton, côté plage. Arrive au matin, repart au coucher du soleil.
-const MERCH={x:HOME.x+HOME.r*.9,y:HOME.y+48,here:false,walk:1,scr:{x:-999,y:-999}};
+const MERCH={x:HOME.x+HOME.r*.40,y:HOME.y-9,here:false,walk:1,scr:{x:-999,y:-999}};
 function merchPresent(){const p=(dayT%DAY)/DAY;return p>.96||p<.63}
 function updateMerchant(dt){const h=merchPresent();if(h!==MERCH.here){MERCH.here=h;MERCH.walk=0}MERCH.walk=Math.min(1,MERCH.walk+dt/3)}
 function drawMerchant(ox,oy,z){const X=MERCH.x+ox,Y=MERCH.y+oy;if(X<-80||X>W+80||Y<-80||Y>H+80){MERCH.scr={x:-999,y:-999};return}
+  // Kiosque forain sur l'herbe : tente, guirlandes et enseigne.
+  // Habillage uniquement : le jeu, ses horaires et son point d'interaction restent intacts.
+  ctx.save();ctx.translate(X,Y);
+  ctx.fillStyle='rgba(25,43,31,.18)';ctx.beginPath();ctx.ellipse(0,8,38,29,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#764125';ctx.beginPath();ctx.roundRect(-33,-23,66,51,7);ctx.fill();
+  ctx.fillStyle='#a84c32';ctx.beginPath();ctx.roundRect(-29,-19,58,44,5);ctx.fill();
+  ctx.fillStyle='#eacb88';ctx.fillRect(-25,3,50,17);
+  // Rayures du chapiteau et pointe centrale.
+  ctx.fillStyle='#f6e4ba';ctx.beginPath();ctx.moveTo(-38,-19);ctx.lineTo(0,-43);ctx.lineTo(38,-19);ctx.closePath();ctx.fill();
+  for(let k=0;k<6;k++){const x=-38+k*12.67;ctx.fillStyle=k%2?'#e24b43':'#f9e5bd';ctx.beginPath();ctx.moveTo(0,-43);ctx.lineTo(x,-19);ctx.lineTo(x+12.67,-19);ctx.closePath();ctx.fill()}
+  ctx.strokeStyle='#8e382e';ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(-38,-19);ctx.lineTo(0,-43);ctx.lineTo(38,-19);ctx.stroke();
+  // Enseigne suspendue, suffisamment haute pour ne pas masquer la roue.
+  ctx.fillStyle='#67321e';ctx.beginPath();ctx.roundRect(-31,-35,62,16,5);ctx.fill();
+  ctx.strokeStyle='#f5c55e';ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle='#fff3c8';ctx.font='bold 7px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('JEU DU HASARD',0,-27);
+  for(const side of [-1,1]){
+   ctx.strokeStyle='#6e452c';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(side*33,-15);ctx.lineTo(side*35,-37);ctx.stroke();
+   ctx.fillStyle='#f6c55c';ctx.beginPath();ctx.arc(side*35,-38,3,0,Math.PI*2);ctx.fill();
+  }
+  ctx.strokeStyle='#9b6c44';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(-35,-37);ctx.quadraticCurveTo(0,-29,35,-37);ctx.stroke();
+  for(let k=0;k<9;k++){const xx=-32+k*8,yy=-37+7*(1-(xx/35)**2);ctx.fillStyle=k%2?'#ffd05c':'#eb6565';ctx.beginPath();ctx.arc(xx,yy,1.7,0,Math.PI*2);ctx.fill()}
+  ctx.restore();
   // Details d'echoppe de marin : filet et petite enseigne, sans agrandir le stand.
   ctx.save();ctx.translate(X,Y);
   ctx.strokeStyle='rgba(103,73,46,.55)';ctx.lineWidth=.8;
