@@ -3686,7 +3686,18 @@ const MK_WP=[[-.05,-.12],[.05,.1],[.14,-.02],[-.08,.05],[.1,-.18],[.08,.18]].map
 function fireSpot(){const a=Math.random()*Math.PI*2;return [CAMP.x+Math.cos(a)*30,CAMP.y+Math.sin(a)*26]}
 // Zone sûre des villageois : marge intérieure conservatrice par rapport au rivage.
 function npcSafePoint(x,y){const dx=x-HOME.x,dy=y-HOME.y,d=Math.hypot(dx,dy),limit=HOME.r*.70;if(!Number.isFinite(d))return [HOME.x,HOME.y];return d<=limit?[x,y]:[HOME.x+dx/d*limit,HOME.y+dy/d*limit]}
-function npcSafeStep(f,dx,dy,speed,dt){const step=Math.min(Math.max(dt,0),.05)*speed;[f.x,f.y]=npcSafePoint(f.x+dx*step,f.y+dy*step)}
+function npcSafeStep(f,dx,dy,speed,dt){
+ // 2.2.0 etape 1 : chaque pas reste sur la terre et hors des batiments.
+ const step=Math.min(Math.max(dt,0),.05)*speed;
+ if(!Number.isFinite(dx)||!Number.isFinite(dy)||step<=0)return;
+ const nx=f.x+dx*step,ny=f.y+dy*step;
+ if(inIsland(HOME,nx,ny,.85)&&!blocked(nx,ny,3)){f.x=nx;f.y=ny;return}
+ // Essai sur chaque axe pour contourner un obstacle sans teleportation.
+ if(inIsland(HOME,nx,f.y,.85)&&!blocked(nx,f.y,3)){f.x=nx;return}
+ if(inIsland(HOME,f.x,ny,.85)&&!blocked(f.x,ny,3)){f.y=ny;return}
+ // L'habitant patiente avant de choisir une nouvelle destination.
+ f.wait=1.2;f.tx=f.x;f.ty=f.y;
+}
 function updateMarket(dt){for(const [i,f] of MARKET.folk.entries()){f.ph+=dt;if(f.wait>0){f.wait-=dt;if(f.wait<=0){const w=darkness()>.65?[MARKET.x-17+i*7,MARKET.y+20+i*8]:FIRE.t>0&&Math.random()<.45?fireSpot():MK_WP[(Math.random()*MK_WP.length)|0];[f.tx,f.ty]=npcSafePoint(w[0],w[1])}continue}
     const dx=f.tx-f.x,dy=f.ty-f.y,d=Math.hypot(dx,dy);if(d<1.5){f.wait=2+Math.random()*3;f.social=2.5;continue}npcSafeStep(f,dx/d,dy/d,14,dt);f.social=0;f.a=Math.atan2(dy,dx)}
   for(const g of MARKET.gulls){if(g.f>0)g.f-=dt;else if(Math.hypot(boat.x-g.x,boat.y-g.y)<60||Math.random()<dt*.05)g.f=1.2}}
