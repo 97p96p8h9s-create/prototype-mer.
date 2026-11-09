@@ -3642,7 +3642,7 @@ setInterval(checkDay,60000);
 
 // ================= VENDEUR AMBULANT (défis du jour) =================
 // À l'entrée du ponton, côté plage. Arrive au matin, repart au coucher du soleil.
-const MERCH={x:HOME.x+HOME.r*.27,y:HOME.y-31,here:false,walk:1,scr:{x:-999,y:-999}};
+const MERCH={x:HOME.x-HOME.r*.38,y:HOME.y+HOME.r*.27,here:false,walk:1,scr:{x:-999,y:-999}};
 function merchPresent(){const p=(dayT%DAY)/DAY;return p>.96||p<.63}
 function updateMerchant(dt){const h=merchPresent();if(h!==MERCH.here){MERCH.here=h;MERCH.walk=0}MERCH.walk=Math.min(1,MERCH.walk+dt/3)}
 function drawMerchant(ox,oy,z){const X=MERCH.x+ox,Y=MERCH.y+oy;if(X<-80||X>W+80||Y<-80||Y>H+80){MERCH.scr={x:-999,y:-999};return}
@@ -3661,10 +3661,6 @@ function drawMerchant(ox,oy,z){const X=MERCH.x+ox,Y=MERCH.y+oy;if(X<-80||X>W+80|
   // Petit toit pointu distinct, sans panneau superpose a la roue.
   ctx.fillStyle='#e65343';ctx.beginPath();ctx.moveTo(-26,-28);ctx.lineTo(0,-43);ctx.lineTo(26,-28);ctx.closePath();ctx.fill();
   ctx.fillStyle='#fff0cf';ctx.beginPath();ctx.moveTo(-9,-33);ctx.lineTo(0,-43);ctx.lineTo(9,-33);ctx.closePath();ctx.fill();
-  // Enseigne placee tout en haut, lisible et libre.
-  ctx.fillStyle='#703823';ctx.beginPath();ctx.roundRect(-30,-54,60,15,5);ctx.fill();
-  ctx.strokeStyle='#efc35d';ctx.lineWidth=2;ctx.stroke();
-  ctx.fillStyle='#fff0c7';ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='bold 7px system-ui';ctx.fillText('JEU DU HASARD',0,-46);
   // Roue au centre du stand, de taille lisible.
   if(MERCH.here){
     const r=13,wx=-6,wy=0,ang=t*.6,cols=['#ffd95c','#6ac6df','#ef7187','#85c27c','#ad91e1','#ffad59'];
