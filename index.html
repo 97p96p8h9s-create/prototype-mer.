@@ -3684,8 +3684,11 @@ const MARKET={x:HOME.x+HOME.r*.66,y:HOME.y,stalls:[
   gulls:[{x:HOME.x+HOME.r*.47,y:HOME.y-20,f:0},{x:HOME.x+HOME.r*.76,y:HOME.y+58,f:0}],scr:[]};
 const MK_WP=[[-.05,-.12],[.05,.1],[.14,-.02],[-.08,.05],[.1,-.18],[.08,.18]].map(([a,b])=>[HOME.x+HOME.r*(.66+a),HOME.y+HOME.r*b]);
 function fireSpot(){const a=Math.random()*Math.PI*2;return [CAMP.x+Math.cos(a)*30,CAMP.y+Math.sin(a)*26]}
-function updateMarket(dt){for(const [i,f] of MARKET.folk.entries()){f.ph+=dt;if(f.wait>0){f.wait-=dt;if(f.wait<=0){const w=darkness()>.65?[MARKET.x-17+i*7,MARKET.y+20+i*8]:FIRE.t>0&&Math.random()<.45?fireSpot():MK_WP[(Math.random()*MK_WP.length)|0];f.tx=w[0];f.ty=w[1]}continue}
-    const dx=f.tx-f.x,dy=f.ty-f.y,d=Math.hypot(dx,dy);if(d<1.5){f.wait=2+Math.random()*3;f.social=2.5;continue}f.x+=dx/d*14*dt;f.y+=dy/d*14*dt;f.social=0;f.a=Math.atan2(dy,dx)}
+// Zone sûre des villageois : marge intérieure conservatrice par rapport au rivage.
+function npcSafePoint(x,y){const dx=x-HOME.x,dy=y-HOME.y,d=Math.hypot(dx,dy),limit=HOME.r*.70;if(!Number.isFinite(d))return [HOME.x,HOME.y];return d<=limit?[x,y]:[HOME.x+dx/d*limit,HOME.y+dy/d*limit]}
+function npcSafeStep(f,dx,dy,speed,dt){const step=Math.min(Math.max(dt,0),.05)*speed;[f.x,f.y]=npcSafePoint(f.x+dx*step,f.y+dy*step)}
+function updateMarket(dt){for(const [i,f] of MARKET.folk.entries()){f.ph+=dt;if(f.wait>0){f.wait-=dt;if(f.wait<=0){const w=darkness()>.65?[MARKET.x-17+i*7,MARKET.y+20+i*8]:FIRE.t>0&&Math.random()<.45?fireSpot():MK_WP[(Math.random()*MK_WP.length)|0];[f.tx,f.ty]=npcSafePoint(w[0],w[1])}continue}
+    const dx=f.tx-f.x,dy=f.ty-f.y,d=Math.hypot(dx,dy);if(d<1.5){f.wait=2+Math.random()*3;f.social=2.5;continue}npcSafeStep(f,dx/d,dy/d,14,dt);f.social=0;f.a=Math.atan2(dy,dx)}
   for(const g of MARKET.gulls){if(g.f>0)g.f-=dt;else if(Math.hypot(boat.x-g.x,boat.y-g.y)<60||Math.random()<dt*.05)g.f=1.2}}
 function drawIcon(k,x,y,r){ctx.save();ctx.translate(x,y);
   ctx.fillStyle='rgba(255,255,255,.95)';ctx.beginPath();ctx.arc(0,0,r,0,7);ctx.fill();ctx.strokeStyle='rgba(60,40,20,.5)';ctx.lineWidth=1.2;ctx.stroke();
@@ -4284,8 +4287,8 @@ function drawHouse(h,X,Y,big){ctx.save();ctx.translate(X,Y);ctx.rotate(h.a);
   if(darkness()>.3){ctx.fillStyle='#ffd36a';ctx.fillRect(-11,12,3,2);ctx.fillRect(8,12,3,2);
    ctx.save();ctx.globalAlpha=Math.min(.4,darkness()*.34);ctx.globalCompositeOperation='lighter';ctx.drawImage(glowSprite('255,201,105'),-25,1,23,23);ctx.drawImage(glowSprite('255,201,105'),3,1,23,23);ctx.restore()}
   ctx.restore();if(Math.random()<.04)fx.push({x:h.x+8,y:h.y-7,vx:3,vy:-10,life:1.8,c:'200,195,190',r:2.5,grow:1,a:.3})}
-function updateVillageLife(dt){if(vStage<3)return;for(const [i,f] of VILL.folk.entries()){f.ph+=dt;if(f.wait>0){f.wait-=dt;if(f.wait<=0){const w=darkness()>.65?[VILL.houses[i].x+18,VILL.houses[i].y+18]:FIRE.t>0&&Math.random()<.45?fireSpot():V_WP[(Math.random()*V_WP.length)|0];f.tx=w[0];f.ty=w[1]}continue}
-  const dx=f.tx-f.x,dy=f.ty-f.y,d=Math.hypot(dx,dy);if(d<1.5){f.wait=2+Math.random()*4;f.social=3;continue}f.x+=dx/d*12*dt;f.y+=dy/d*12*dt;f.social=0;f.a=Math.atan2(dy,dx)}}
+function updateVillageLife(dt){if(vStage<3)return;for(const [i,f] of VILL.folk.entries()){f.ph+=dt;if(f.wait>0){f.wait-=dt;if(f.wait<=0){const w=darkness()>.65?[VILL.houses[i].x+18,VILL.houses[i].y+18]:FIRE.t>0&&Math.random()<.45?fireSpot():V_WP[(Math.random()*V_WP.length)|0];[f.tx,f.ty]=npcSafePoint(w[0],w[1])}continue}
+  const dx=f.tx-f.x,dy=f.ty-f.y,d=Math.hypot(dx,dy);if(d<1.5){f.wait=2+Math.random()*4;f.social=3;continue}npcSafeStep(f,dx/d,dy/d,12,dt);f.social=0;f.a=Math.atan2(dy,dx)}}
 const villageTalkEl=document.getElementById('villageTalk');
 let villageTalkFrom='Marchande';
 function openVillageTalk(who){
