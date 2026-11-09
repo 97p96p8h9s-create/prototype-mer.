@@ -4342,7 +4342,7 @@ function drawHouse(h,X,Y,big){ctx.save();ctx.translate(X,Y);ctx.rotate(h.a);
   if(darkness()>.3){ctx.fillStyle='#ffd36a';ctx.fillRect(-11,12,3,2);ctx.fillRect(8,12,3,2);
    ctx.save();ctx.globalAlpha=Math.min(.4,darkness()*.34);ctx.globalCompositeOperation='lighter';ctx.drawImage(glowSprite('255,201,105'),-25,1,23,23);ctx.drawImage(glowSprite('255,201,105'),3,1,23,23);ctx.restore()}
   ctx.restore();if(Math.random()<.04)fx.push({x:h.x+8,y:h.y-7,vx:3,vy:-10,life:1.8,c:'200,195,190',r:2.5,grow:1,a:.3})}
-function updateVillageLife(dt){if(vStage<3)return;for(const [i,f] of VILL.folk.entries()){f.ph+=dt;if(f.wait>0){f.wait-=dt;if(f.wait<=0){const w=darkness()>.65?[VILL.houses[i].x+18,VILL.houses[i].y+18]:FIRE.t>0&&Math.random()<.45?fireSpot():V_WP[(Math.random()*V_WP.length)|0];[f.tx,f.ty]=npcSafePoint(w[0],w[1])}continue}
+function updateVillageLife(dt){for(const [i,f] of VILL.folk.entries()){f.ph+=dt;if(f.wait>0){f.wait-=dt;if(f.wait<=0){const w=darkness()>.65?[VILL.houses[i].x+18,VILL.houses[i].y+18]:FIRE.t>0&&Math.random()<.45?fireSpot():V_WP[(Math.random()*V_WP.length)|0];[f.tx,f.ty]=npcSafePoint(w[0],w[1])}continue}
   const dx=f.tx-f.x,dy=f.ty-f.y,d=Math.hypot(dx,dy);if(d<1.5){f.wait=2+Math.random()*4;f.social=3;continue}npcSafeStep(f,dx/d,dy/d,12,dt);f.social=0;f.a=Math.atan2(dy,dx)}}
 const villageTalkEl=document.getElementById('villageTalk');
 let villageTalkFrom='Marchande';
@@ -4436,7 +4436,9 @@ function drawVillage(ox,oy){if(vStage<2)return;const X0=HOME.x+ox,Y0=HOME.y+oy;i
     {const [x,y]=P(VILL.nets);ctx.strokeStyle='#6b4423';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x-16,y-6);ctx.lineTo(x-16,y+6);ctx.moveTo(x+16,y-6);ctx.lineTo(x+16,y+6);ctx.stroke();
       ctx.strokeStyle='rgba(120,100,70,.8)';ctx.lineWidth=.7;const sw=Math.sin(t*2)*1.5;for(let i=0;i<=8;i++){ctx.beginPath();ctx.moveTo(x-16+i*4,y-5);ctx.quadraticCurveTo(x-16+i*4+sw,y,x-16+i*4,y+5);ctx.stroke()}
       for(let j=-1;j<=1;j++){ctx.beginPath();ctx.moveTo(x-16,y+j*4);ctx.quadraticCurveTo(x,y+j*4+3+sw,x+16,y+j*4);ctx.stroke()}}
-    for(const [i,f] of VILL.folk.entries())drawRoleVillager(f,f.x+ox,f.y+oy,i+3)}
+  }
+  // Habitants visibles dès le début, indépendamment des bâtiments à débloquer.
+  for(const [i,f] of VILL.folk.entries())drawRoleVillager(f,f.x+ox,f.y+oy,i+3);
   // étape 4 : phare
   if(vStage>=4){const [x,y]=P(VILL.light);lighthouse(ctx,x,y)}
   // Étape 5 : une épave reconvertie en chantier naval, sans changer son emplacement.
@@ -5876,7 +5878,7 @@ function draw(st){updateSun();
   drawOrbs(ox,oy);
   if(sinking){const k=sinking/2.2;ctx.save();ctx.globalAlpha=k;ctx.translate(boat.x+ox,boat.y+oy);ctx.scale(.5+k*.5,.5+k*.5);ctx.translate(-(boat.x+ox),-(boat.y+oy));drawBoat(boat.x+ox,boat.y+oy,0,0);ctx.restore()}
   else drawBoat(boat.x+ox,boat.y+oy,sp,throttle);
-  drawVillage(ox,oy);drawMine(ox,oy);drawCampfire(ox,oy);drawMarket(ox,oy,z);drawCrew(ox,oy);drawMerchant(ox,oy,z);drawStore(ox,oy);drawOven(ox,oy);drawPierStone(ox,oy);drawCatchBoard(ox,oy);drawFoot(ox,oy);drawParrot(ox,oy);drawTalk(ox,oy);
+  drawVillage(ox,oy);if(vStage<2){for(const [i,f] of VILL.folk.entries())drawRoleVillager(f,f.x+ox,f.y+oy,i+3)}drawMine(ox,oy);drawCampfire(ox,oy);drawMarket(ox,oy,z);drawCrew(ox,oy);drawMerchant(ox,oy,z);drawStore(ox,oy);drawOven(ox,oy);drawPierStone(ox,oy);drawCatchBoard(ox,oy);drawFoot(ox,oy);drawParrot(ox,oy);drawTalk(ox,oy);
   boatScr={x:(boat.x+ox)*z,y:(boat.y+oy)*z};
   if(!canFish)boatMenu=false;
   hintA+=((canFish&&!star&&!boatMenu?1:0)-hintA)*.1;
