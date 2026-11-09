@@ -3717,7 +3717,7 @@ function personTop(col,hat,extra){ // personnage vu de dessus, regard vers +y (v
   ctx.strokeStyle='#e9bf95';ctx.lineWidth=1.8;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(-4.5,.5);ctx.lineTo(-3.5,3.5);ctx.moveTo(4.5,.5);ctx.lineTo(3.5,3.5);ctx.stroke();
   ctx.fillStyle='#e9bf95';ctx.beginPath();ctx.arc(0,.4,2.5,0,7);ctx.fill();if(hat)hat();if(extra)extra()}
 const STALL_C={};
-function drawStall(st,X,Y){if(st.k==='shop'){ctx.drawImage(shipwreckWorkshopSprite(),X-53,Y-54,106,108);return}ctx.save();ctx.translate(X,Y);ctx.scale(1.5,1.5);ctx.fillStyle=`rgba(0,0,0,${SUN.a})`;ctx.fillRect(-17+SUN.x*7,-12+SUN.y*7,34,24);ctx.restore();
+function drawStall(st,X,Y){if(st.k==='shop'){ctx.save();ctx.translate(X,Y);ctx.rotate(-.20);ctx.drawImage(shipwreckWorkshopSprite(),-38,-39,76,78);ctx.restore();return}ctx.save();ctx.translate(X,Y);ctx.scale(1.5,1.5);ctx.fillStyle=`rgba(0,0,0,${SUN.a})`;ctx.fillRect(-17+SUN.x*7,-12+SUN.y*7,34,24);ctx.restore();
   const on=darkness()>.15,key=st.k+(on?1:0);let c=STALL_C[key];
   if(!c){const K=3,S=72;c=document.createElement('canvas');c.width=c.height=S*K;const g=c.getContext('2d');g.setTransform(K,0,0,K,S*K/2,S*K/2);drawStallTo(g,st,on);STALL_C[key]=c}
   ctx.drawImage(c,X-36,Y-36,72,72)}
@@ -3756,20 +3756,40 @@ function drawStallTo(g,st,dkOn){const dk=dkOn?1:0;g.save();g.scale(1.5,1.5);
   g.restore()}
 // 2.1.9 — plateformes marchandes sur pilotis (habillage visuel, sans deplacer les interactions).
 function drawMarketDecks(ox,oy){
- // Jetées praticables en T : deux commerces au nord/sud et la roue au sud-est.
+ // Port tropical : passerelles fines et terrasses aux angles adoucis.
  const ax=HOME.x+HOME.r*.84,cy=HOME.y;
- const rect=(x,y,w,h)=>{const X=x+ox,Y=y+oy;if(X+w<-40||X>W+40||Y+h<-40||Y>H+40)return;
-   ctx.fillStyle='rgba(4,52,65,.28)';ctx.fillRect(X+4,Y+6,w,h);
-   ctx.fillStyle='#654126';ctx.fillRect(X-3,Y-3,w+6,h+6);
-   ctx.fillStyle='#ad7845';ctx.fillRect(X,Y,w,h);
-   for(let yy=Y+5;yy<Y+h-3;yy+=9){ctx.fillStyle=(Math.floor(yy/9)%2)?'#bd8952':'#c9965e';ctx.fillRect(X+3,yy,w-6,7);ctx.strokeStyle='rgba(67,42,26,.45)';ctx.lineWidth=.8;ctx.beginPath();ctx.moveTo(X+3,yy+7);ctx.lineTo(X+w-3,yy+7);ctx.stroke()}
-   for(const xx of [X+3,X+w-3])for(const py of [Y+3,Y+h-3]){ctx.fillStyle='#5d3c27';ctx.beginPath();ctx.arc(xx,py,4,0,7);ctx.fill()}
+ const plankPath=(points,width)=>{
+  ctx.save();ctx.lineJoin='round';ctx.lineCap='round';
+  const trace=()=>{ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(p[0]+ox,p[1]+oy):ctx.moveTo(p[0]+ox,p[1]+oy))};
+  trace();ctx.strokeStyle='rgba(5,56,65,.27)';ctx.lineWidth=width+8;ctx.stroke();
+  trace();ctx.strokeStyle='#62432b';ctx.lineWidth=width+3;ctx.stroke();
+  trace();ctx.strokeStyle='#b78652';ctx.lineWidth=width;ctx.stroke();
+  trace();ctx.strokeStyle='rgba(242,208,154,.48)';ctx.lineWidth=width-6;ctx.stroke();
+  ctx.restore();
+ };
+ const platform=(x,y,rx,ry)=>{
+  const X=x+ox,Y=y+oy;
+  ctx.save();ctx.translate(X,Y);
+  ctx.fillStyle='rgba(6,49,60,.28)';ctx.beginPath();ctx.ellipse(3,7,rx+5,ry+5,-.07,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#64472e';ctx.beginPath();ctx.ellipse(0,0,rx+3,ry+3,-.07,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#b7834e';ctx.beginPath();ctx.ellipse(0,0,rx,ry,-.07,0,Math.PI*2);ctx.fill();
+  ctx.save();ctx.beginPath();ctx.ellipse(0,0,rx-2,ry-2,-.07,0,Math.PI*2);ctx.clip();
+  for(let yy=-ry;yy<ry;yy+=9){ctx.fillStyle=Math.floor(yy/9)%2?'#bd8d56':'#d1a16b';ctx.fillRect(-rx,yy,rx*2,7);
+   ctx.strokeStyle='rgba(91,59,34,.36)';ctx.lineWidth=.8;ctx.beginPath();ctx.moveTo(-rx,yy+7);ctx.lineTo(rx,yy+7);ctx.stroke()}
+  ctx.restore();
+  for(const k of [-1,1]){ctx.fillStyle='#62452b';ctx.beginPath();ctx.arc(k*rx*.76,-ry*.68,3.7,0,Math.PI*2);ctx.arc(k*rx*.76,ry*.68,3.7,0,Math.PI*2);ctx.fill()}
+  ctx.restore();
  };
  ctx.save();
- rect(ax-12,cy-94,24,188);
- rect(ax-12,cy+70,MERCH.x-ax+25,26);
- for(const st of MARKET.stalls)rect(st.x-43,st.y-41,86,82);
- rect(MERCH.x-37,MERCH.y-36,74,72);
+ plankPath([[ax,cy-86],[ax-3,cy-36],[ax,cy],[ax+2,cy+38],[ax,cy+83]],18);
+ plankPath([[ax,cy+83],[MERCH.x,MERCH.y]],17);
+ platform(MARKET.stalls[0].x,MARKET.stalls[0].y,39,43);
+ platform(MARKET.stalls[1].x,MARKET.stalls[1].y,39,39);
+ platform(MERCH.x,MERCH.y,31,30);
+ // Cordages et bouees : discrets, fixes aux bords des passerelles.
+ ctx.strokeStyle='rgba(233,205,154,.65)';ctx.lineWidth=1.4;
+ for(const yy of [cy-48,cy+40]){ctx.beginPath();ctx.moveTo(ax-12+ox,yy-9+oy);ctx.quadraticCurveTo(ax-17+ox,yy+oy,ax-12+ox,yy+9+oy);ctx.stroke()}
+ ctx.fillStyle='#d8794c';ctx.beginPath();ctx.arc(ax-15+ox,cy+46+oy,3,0,Math.PI*2);ctx.fill();
  ctx.restore();
 }
 function drawMarket(ox,oy,z){const X0=MARKET.x+ox,Y0=MARKET.y+oy;if(X0<-160||X0>W+160||Y0<-160||Y0>H+160){MARKET.scr=[];return}
@@ -3797,6 +3817,12 @@ function drawMarket(ox,oy,z){const X0=MARKET.x+ox,Y0=MARKET.y+oy;if(X0<-160||X0>
   ctx.save();ctx.globalAlpha=.85;ctx.fillStyle='#e2c394';ctx.beginPath();ctx.ellipse(X0+5,Y0+12,52,57,0,0,Math.PI*2);ctx.fill();ctx.restore();
   // Pontons commerciaux reliés au ponton principal.
   drawMarketDecks(ox,oy);
+  // Atelier sous une toiture de toile et equipement de charpentier.
+  {const st=MARKET.stalls[1],X=st.x+ox,Y=st.y+oy;
+   ctx.save();ctx.fillStyle='rgba(53,34,20,.25)';ctx.beginPath();ctx.ellipse(X,Y-13,32,22,0,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle='#d9bd83';ctx.beginPath();ctx.moveTo(X-32,Y-17);ctx.lineTo(X-22,Y-33);ctx.lineTo(X+23,Y-33);ctx.lineTo(X+33,Y-17);ctx.closePath();ctx.fill();
+   ctx.fillStyle='#488e79';for(let k=0;k<5;k++){ctx.beginPath();ctx.moveTo(X-31+k*12,Y-18);ctx.lineTo(X-22+k*10,Y-32);ctx.lineTo(X-13+k*10,Y-32);ctx.lineTo(X-19+k*12,Y-18);ctx.closePath();ctx.fill()}
+   ctx.strokeStyle='#78502f';ctx.lineWidth=2;ctx.strokeRect(X-30,Y-18,60,2);ctx.restore()}
   // étals
   for(const st of MARKET.stalls)drawStall(st,st.x+ox,st.y+oy);
   // guirlande de fanions au-dessus de l'entrée du ponton
