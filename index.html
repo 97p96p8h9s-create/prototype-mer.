@@ -3645,59 +3645,35 @@ setInterval(checkDay,60000);
 const MERCH={x:HOME.x-HOME.r*.38,y:HOME.y+HOME.r*.27,here:false,walk:1,scr:{x:-999,y:-999}};
 function merchPresent(){const p=(dayT%DAY)/DAY;return p>.96||p<.63}
 function updateMerchant(dt){const h=merchPresent();if(h!==MERCH.here){MERCH.here=h;MERCH.walk=0}MERCH.walk=Math.min(1,MERCH.walk+dt/3)}
-function drawMerchant(ox,oy,z){const X=MERCH.x+ox,Y=MERCH.y+oy;if(X<-80||X>W+80||Y<-80||Y>H+80){MERCH.scr={x:-999,y:-999};return}
-  // Stand forain unique : chapiteau, comptoir et roue dans un meme dessin.
-  // Les coordonnees MERCH servent aussi a la zone tactile.
-  const dk=darkness();
-  ctx.save();ctx.translate(X,Y);
-  ctx.fillStyle='rgba(31,54,31,.19)';ctx.beginPath();ctx.ellipse(2,8,34,28,0,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#6c3c26';ctx.beginPath();ctx.roundRect(-31,-16,62,41,5);ctx.fill();
-  ctx.fillStyle='#a64736';ctx.fillRect(-27,-13,54,34);
-  ctx.fillStyle='#f6e5bf';ctx.fillRect(-23,5,46,13);
-  ctx.fillStyle='#e5bf7a';ctx.fillRect(-29,18,58,5);
-  // Auvent raye, legerement courbe et surplombant la facade.
-  for(let k=0;k<8;k++){ctx.fillStyle=k%2?'#e65a48':'#fff0d0';ctx.beginPath();ctx.moveTo(-34+k*8.5,-17);ctx.lineTo(-28+k*7,-27);ctx.lineTo(-21+k*7,-27);ctx.lineTo(-25.5+k*8.5,-17);ctx.closePath();ctx.fill()}
-  ctx.strokeStyle='#70422b';ctx.lineWidth=1.4;ctx.beginPath();ctx.moveTo(-34,-17);ctx.lineTo(34,-17);ctx.stroke();
-  // Petit toit pointu distinct, sans panneau superpose a la roue.
-  ctx.fillStyle='#e65343';ctx.beginPath();ctx.moveTo(-26,-28);ctx.lineTo(0,-43);ctx.lineTo(26,-28);ctx.closePath();ctx.fill();
-  ctx.fillStyle='#fff0cf';ctx.beginPath();ctx.moveTo(-9,-33);ctx.lineTo(0,-43);ctx.lineTo(9,-33);ctx.closePath();ctx.fill();
-  // Roue au centre du stand, de taille lisible.
-  if(MERCH.here){
-    const r=13,wx=-6,wy=0,ang=t*.6,cols=['#ffd95c','#6ac6df','#ef7187','#85c27c','#ad91e1','#ffad59'];
-    for(let k=0;k<12;k++){ctx.fillStyle=cols[k%6];ctx.beginPath();ctx.moveTo(wx,wy);ctx.arc(wx,wy,r,ang+k*Math.PI/6,ang+(k+1)*Math.PI/6);ctx.closePath();ctx.fill()}
-    ctx.strokeStyle='#70452b';ctx.lineWidth=2;ctx.beginPath();ctx.arc(wx,wy,r,0,Math.PI*2);ctx.stroke();
-    ctx.fillStyle='#f5d079';ctx.beginPath();ctx.arc(wx,wy,2.5,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#f6e2a5';ctx.beginPath();ctx.moveTo(wx-3,wy-r-4);ctx.lineTo(wx+3,wy-r-4);ctx.lineTo(wx,wy-r+2);ctx.fill();
-    ctx.fillStyle='#754324';ctx.fillRect(14,-2,10,10);ctx.fillStyle='#f4cf67';ctx.fillRect(18,0,2,3);
-  }else{
-    ctx.fillStyle='#875b3d';ctx.fillRect(-25,-13,50,31);
-    ctx.strokeStyle='#b88c5c';for(let k=-20;k<25;k+=10){ctx.beginPath();ctx.moveTo(k,-13);ctx.lineTo(k,18);ctx.stroke()}
-  }
-  // Fanions fixes, lampes et cordages.
-  for(const side of [-1,1]){ctx.strokeStyle='#65442b';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(side*29,14);ctx.lineTo(side*31,-31);ctx.stroke();
-    ctx.fillStyle='#ffd66a';ctx.beginPath();ctx.arc(side*31,-32,3,0,Math.PI*2);ctx.fill()}
-  ctx.strokeStyle='#8d6246';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(-31,-31);ctx.quadraticCurveTo(0,-22,31,-31);ctx.stroke();
-  for(let k=0;k<7;k++){const xx=-27+k*9,yy=-31+9*(1-(xx/31)**2);ctx.fillStyle=k%2?'#f7d066':'#ef6a66';ctx.beginPath();ctx.arc(xx,yy,2,0,Math.PI*2);ctx.fill()}
-  ctx.restore();
-  if(!MERCH.here&&MERCH.walk>=1){MERCH.scr={x:X*z,y:Y*z};return}
-  // marchand (vu de dessus) : manteau long, chapeau ; il arrive ou repart en marchant le long de la plage
-  const w=MERCH.walk,away=MERCH.here?1-w:w,mx=X-4,my=Y+27+away*90,al=MERCH.here?1:1-w,step=away>0&&away<1?Math.sin(t*12):0;
-  ctx.save();ctx.globalAlpha=al;ctx.translate(mx,my);ctx.rotate(away>0&&away<1?(MERCH.here?-Math.PI/2:Math.PI/2):Math.PI*1.05);
-  ctx.fillStyle='rgba(0,0,0,.2)';ctx.beginPath();ctx.ellipse(1,2,7,6,0,0,7);ctx.fill();
-  ctx.fillStyle='#2a2018';ctx.beginPath();ctx.ellipse(-3+step*2,-2.4,2,1.4,0,0,7);ctx.ellipse(-3-step*2,2.4,2,1.4,0,0,7);ctx.fill();
-  ctx.fillStyle='#5b3f6e';ctx.beginPath();ctx.ellipse(-1,0,5,6.4,0,0,7);ctx.fill();
-  ctx.fillStyle='#e8c260';ctx.fillRect(1,-1,1,2);
-  ctx.fillStyle='#3a2a46';ctx.beginPath();ctx.arc(1,0,4.8,0,7);ctx.fill();
-  ctx.fillStyle='#4a3858';ctx.beginPath();ctx.arc(1,0,3,0,7);ctx.fill();ctx.fillStyle='#c0392b';ctx.beginPath();ctx.arc(1,0,3.2,Math.PI*.2,Math.PI*.55);ctx.lineTo(1,0);ctx.fill();
-  ctx.restore();
-  MERCH.scr={x:(X+6)*z,y:Y*z};
-  // bulle « ! » quand un tour de roue attend
-  if(MERCH.here&&w>=1&&dailyReady()&&Math.hypot(boat.x-MERCH.x,boat.y-MERCH.y)<700){const by=Y-30+Math.sin(t*4)*2.5;
-    ctx.fillStyle='#ffffff';ctx.beginPath();ctx.arc(X+18,by,9,0,7);ctx.fill();ctx.beginPath();ctx.moveTo(X+14,by+7);ctx.lineTo(X+18,by+14);ctx.lineTo(X+21,by+7);ctx.fill();
-    ctx.fillStyle='#e8402f';ctx.font='900 14px Nunito, system-ui, sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('!',X+18,by+1)}}
+function drawMerchant(ox,oy,z){
+ // Marin ambulant remplaçant entièrement le kiosque forain.
+ // Les récompenses quotidiennes et les sauvegardes restent inchangées.
+ const near=typeof foot!=='undefined'&&foot&&foot.on;
+ const phase=Math.sin(t*.65),walkX=MERCH.here?Math.sin(t*.35)*7:0,walkY=MERCH.here?Math.cos(t*.35)*5:0;
+ const X=MERCH.x+ox+walkX,Y=MERCH.y+oy+walkY;
+ if(X<-75||X>W+75||Y<-75||Y>H+75){MERCH.scr={x:-999,y:-999};return}
+ if(!MERCH.here){MERCH.scr={x:-999,y:-999};return}
+ ctx.save();ctx.translate(X,Y);ctx.rotate(-.08);
+ // Ombre et silhouette de même gabarit que les autres personnages.
+ ctx.fillStyle='rgba(21,54,36,.20)';ctx.beginPath();ctx.ellipse(0,8,12,5,0,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle='#3c2c22';ctx.beginPath();ctx.ellipse(-4,7,3.4,4,0,0,7);ctx.ellipse(4,7,3.4,4,0,0,7);ctx.fill();
+ ctx.fillStyle='#214a76';ctx.beginPath();ctx.ellipse(0,-1,9,10,0,0,7);ctx.fill();
+ ctx.fillStyle='#b7834a';ctx.fillRect(-3,-6,6,9);
+ ctx.fillStyle='#e6bd91';ctx.beginPath();ctx.arc(0,-13,7,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle='#e9e3d3';ctx.beginPath();ctx.ellipse(0,-10,5.7,3.5,0,0,Math.PI);ctx.fill();
+ ctx.fillStyle='#263c5d';ctx.beginPath();ctx.ellipse(0,-19,10,4.1,0,0,Math.PI*2);ctx.fill();ctx.fillRect(-7,-24,14,5);
+ ctx.strokeStyle='#e8bd5e';ctx.lineWidth=1.1;ctx.beginPath();ctx.moveTo(-4,-20);ctx.lineTo(4,-20);ctx.stroke();
+ ctx.fillStyle='#32261f';for(const xx of [-2.7,2.7]){ctx.beginPath();ctx.arc(xx,-14,1,0,Math.PI*2);ctx.fill()}
+ ctx.strokeStyle='#e6bd91';ctx.lineWidth=3;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(7,-2);ctx.lineTo(11,-4+phase*1.5);ctx.stroke();
+ ctx.restore();
+ MERCH.scr={x:X*z,y:Y*z};
+ if(dailyReady()){const by=Y-38+Math.sin(t*3)*1.5;
+   ctx.fillStyle='#fff7e5';ctx.beginPath();ctx.ellipse(X,by,13,9,0,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle='#63472d';ctx.font='bold 12px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('…',X,by-1)}
+}
 function tapMerchant(e){if(MERCH.scr.x<-900||Math.hypot(e.clientX-MERCH.scr.x,e.clientY-MERCH.scr.y)>Math.max(36,30*zoomCur))return false;
-  audio();if(!merchPresent()){toast.textContent='Le vendeur revient au matin';toast.style.color='#ffe9b0';biomeBannerT=2;return true}
-  if(!docked()){toast.textContent='Accoste pour parler au vendeur';toast.style.color='#ffe9b0';biomeBannerT=2;return true}
+  audio();if(!merchPresent()){toast.textContent='Le marin revient au matin';toast.style.color='#ffe9b0';biomeBannerT=2;return true}
+  if(!docked()){toast.textContent='Accoste pour parler au marin';toast.style.color='#ffe9b0';biomeBannerT=2;return true}
   openDaily();return true}
 
 // ================= PLACE DU MARCHÉ (entrée du ponton) =================
