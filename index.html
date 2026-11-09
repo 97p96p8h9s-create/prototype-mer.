@@ -3642,63 +3642,46 @@ setInterval(checkDay,60000);
 
 // ================= VENDEUR AMBULANT (défis du jour) =================
 // À l'entrée du ponton, côté plage. Arrive au matin, repart au coucher du soleil.
-const MERCH={x:HOME.x+HOME.r*.40,y:HOME.y-9,here:false,walk:1,scr:{x:-999,y:-999}};
+const MERCH={x:HOME.x+HOME.r*.27,y:HOME.y-31,here:false,walk:1,scr:{x:-999,y:-999}};
 function merchPresent(){const p=(dayT%DAY)/DAY;return p>.96||p<.63}
 function updateMerchant(dt){const h=merchPresent();if(h!==MERCH.here){MERCH.here=h;MERCH.walk=0}MERCH.walk=Math.min(1,MERCH.walk+dt/3)}
 function drawMerchant(ox,oy,z){const X=MERCH.x+ox,Y=MERCH.y+oy;if(X<-80||X>W+80||Y<-80||Y>H+80){MERCH.scr={x:-999,y:-999};return}
-  // Kiosque forain sur l'herbe : tente, guirlandes et enseigne.
-  // Habillage uniquement : le jeu, ses horaires et son point d'interaction restent intacts.
+  // Stand forain unique : chapiteau, comptoir et roue dans un meme dessin.
+  // Les coordonnees MERCH servent aussi a la zone tactile.
+  const dk=darkness();
   ctx.save();ctx.translate(X,Y);
-  ctx.fillStyle='rgba(25,43,31,.18)';ctx.beginPath();ctx.ellipse(0,8,38,29,0,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#764125';ctx.beginPath();ctx.roundRect(-33,-23,66,51,7);ctx.fill();
-  ctx.fillStyle='#a84c32';ctx.beginPath();ctx.roundRect(-29,-19,58,44,5);ctx.fill();
-  ctx.fillStyle='#eacb88';ctx.fillRect(-25,3,50,17);
-  // Rayures du chapiteau et pointe centrale.
-  ctx.fillStyle='#f6e4ba';ctx.beginPath();ctx.moveTo(-38,-19);ctx.lineTo(0,-43);ctx.lineTo(38,-19);ctx.closePath();ctx.fill();
-  for(let k=0;k<6;k++){const x=-38+k*12.67;ctx.fillStyle=k%2?'#e24b43':'#f9e5bd';ctx.beginPath();ctx.moveTo(0,-43);ctx.lineTo(x,-19);ctx.lineTo(x+12.67,-19);ctx.closePath();ctx.fill()}
-  ctx.strokeStyle='#8e382e';ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(-38,-19);ctx.lineTo(0,-43);ctx.lineTo(38,-19);ctx.stroke();
-  // Enseigne suspendue, suffisamment haute pour ne pas masquer la roue.
-  ctx.fillStyle='#67321e';ctx.beginPath();ctx.roundRect(-31,-35,62,16,5);ctx.fill();
-  ctx.strokeStyle='#f5c55e';ctx.lineWidth=2;ctx.stroke();
-  ctx.fillStyle='#fff3c8';ctx.font='bold 7px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('JEU DU HASARD',0,-27);
-  for(const side of [-1,1]){
-   ctx.strokeStyle='#6e452c';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(side*33,-15);ctx.lineTo(side*35,-37);ctx.stroke();
-   ctx.fillStyle='#f6c55c';ctx.beginPath();ctx.arc(side*35,-38,3,0,Math.PI*2);ctx.fill();
-  }
-  ctx.strokeStyle='#9b6c44';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(-35,-37);ctx.quadraticCurveTo(0,-29,35,-37);ctx.stroke();
-  for(let k=0;k<9;k++){const xx=-32+k*8,yy=-37+7*(1-(xx/35)**2);ctx.fillStyle=k%2?'#ffd05c':'#eb6565';ctx.beginPath();ctx.arc(xx,yy,1.7,0,Math.PI*2);ctx.fill()}
-  ctx.restore();
-  // Details d'echoppe de marin : filet et petite enseigne, sans agrandir le stand.
-  ctx.save();ctx.translate(X,Y);
-  ctx.strokeStyle='rgba(103,73,46,.55)';ctx.lineWidth=.8;
-  for(let k=0;k<4;k++){ctx.beginPath();ctx.moveTo(17+k*3,-7);ctx.lineTo(26+k*2,7);ctx.stroke()}
-  ctx.fillStyle='#ead5a3';ctx.beginPath();ctx.roundRect(-19,-27,38,9,3);ctx.fill();
-  ctx.fillStyle='#62472e';ctx.font='bold 6px system-ui';ctx.textAlign='center';ctx.fillText('ROUE',0,-20);
-  ctx.restore();
-  // charrette à bras avec la roue de la fortune
-  const dk=darkness();ctx.save();ctx.translate(X,Y);ctx.scale(1.5,1.5);
-  ctx.fillStyle='rgba(0,0,0,.2)';ctx.beginPath();ctx.ellipse(2,3,17,11,0,0,7);ctx.fill();
-  ctx.strokeStyle='#5a3a20';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-14,-4);ctx.lineTo(-24,-6);ctx.moveTo(-14,4);ctx.lineTo(-24,6);ctx.stroke();
-  ctx.fillStyle='#3a2a1a';ctx.fillRect(-6,-12,6,3);ctx.fillRect(-6,9,6,3);
-  ctx.fillStyle='#a8713d';ctx.fillRect(-14,-10,28,20);ctx.strokeStyle='#6e4421';ctx.lineWidth=.8;ctx.strokeRect(-14,-10,28,20);
+  ctx.fillStyle='rgba(31,54,31,.19)';ctx.beginPath();ctx.ellipse(2,8,34,28,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#6c3c26';ctx.beginPath();ctx.roundRect(-31,-16,62,41,5);ctx.fill();
+  ctx.fillStyle='#a64736';ctx.fillRect(-27,-13,54,34);
+  ctx.fillStyle='#f6e5bf';ctx.fillRect(-23,5,46,13);
+  ctx.fillStyle='#e5bf7a';ctx.fillRect(-29,18,58,5);
+  // Auvent raye, legerement courbe et surplombant la facade.
+  for(let k=0;k<8;k++){ctx.fillStyle=k%2?'#e65a48':'#fff0d0';ctx.beginPath();ctx.moveTo(-34+k*8.5,-17);ctx.lineTo(-28+k*7,-27);ctx.lineTo(-21+k*7,-27);ctx.lineTo(-25.5+k*8.5,-17);ctx.closePath();ctx.fill()}
+  ctx.strokeStyle='#70422b';ctx.lineWidth=1.4;ctx.beginPath();ctx.moveTo(-34,-17);ctx.lineTo(34,-17);ctx.stroke();
+  // Petit toit pointu distinct, sans panneau superpose a la roue.
+  ctx.fillStyle='#e65343';ctx.beginPath();ctx.moveTo(-26,-28);ctx.lineTo(0,-43);ctx.lineTo(26,-28);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#fff0cf';ctx.beginPath();ctx.moveTo(-9,-33);ctx.lineTo(0,-43);ctx.lineTo(9,-33);ctx.closePath();ctx.fill();
+  // Enseigne placee tout en haut, lisible et libre.
+  ctx.fillStyle='#703823';ctx.beginPath();ctx.roundRect(-30,-54,60,15,5);ctx.fill();
+  ctx.strokeStyle='#efc35d';ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle='#fff0c7';ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='bold 7px system-ui';ctx.fillText('JEU DU HASARD',0,-46);
+  // Roue au centre du stand, de taille lisible.
   if(MERCH.here){
-    // auvent multicolore
-    const cc=['#e04a3c','#ffd75e','#2a6fb0','#3f8a52','#b06ce0','#ff9f43'];for(let k=0;k<7;k++){ctx.fillStyle=cc[k%6];ctx.fillRect(-15+k*4.3,-14,4.3,6)}
-    ctx.fillStyle='rgba(0,0,0,.15)';ctx.fillRect(-15,-8,30,1.5);
-    // lampions
-    for(let k=0;k<4;k++){const lx=-12+k*8,ly=-15.5;ctx.fillStyle=k%2?'#ffd75e':'#e04a3c';ctx.beginPath();ctx.ellipse(lx,ly,1.8,2.3,0,0,7);ctx.fill();
-      if(dk>.15){ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=.55*dk;ctx.drawImage(glowSprite(k%2?'255,220,120':'255,120,90'),lx-7,ly-7,14,14);ctx.restore()}}
-    // grande roue de la fortune qui tourne doucement
-    const wr=7.5,wx0=-4,wy0=1,wa=t*.6;for(let k=0;k<8;k++){ctx.fillStyle=['#ffd75e','#cfe9f2','#c7b6f0','#bfe0b0'][k%4];ctx.beginPath();ctx.moveTo(wx0,wy0);ctx.arc(wx0,wy0,wr,wa+k/8*Math.PI*2,wa+(k+1)/8*Math.PI*2);ctx.closePath();ctx.fill()}
-    ctx.strokeStyle='#6b4423';ctx.lineWidth=1.2;ctx.beginPath();ctx.arc(wx0,wy0,wr,0,7);ctx.stroke();ctx.fillStyle='#e8c260';ctx.beginPath();ctx.arc(wx0,wy0,1.6,0,7);ctx.fill();
-    ctx.fillStyle='#c0392b';ctx.beginPath();ctx.moveTo(wx0-1.6,wy0-wr-2);ctx.lineTo(wx0+1.6,wy0-wr-2);ctx.lineTo(wx0,wy0-wr+1.5);ctx.fill();
-    // coffre mystère entrouvert qui brille
-    ctx.fillStyle='#7a4a24';ctx.fillRect(6,-1,7,6);ctx.fillStyle='#5a3418';ctx.fillRect(6,-3.4,7,2.4);ctx.fillStyle='#e8c260';ctx.fillRect(9,1,1,2);
-    ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=.6+.3*Math.sin(t*4);ctx.drawImage(softDot('255,230,140'),3.5,-8,12,12);ctx.restore();
-    // fanions
-    ctx.strokeStyle='rgba(60,40,20,.6)';ctx.lineWidth=.5;ctx.beginPath();ctx.moveTo(-14,10);ctx.lineTo(14,10);ctx.stroke();for(let k=0;k<6;k++){ctx.fillStyle=cc[(k+2)%6];ctx.beginPath();ctx.moveTo(-12+k*5,10);ctx.lineTo(-10+k*5,13+Math.sin(t*5+k)*.5);ctx.lineTo(-8+k*5,10);ctx.fill()}}
-  else{ctx.fillStyle='#8a6a48';ctx.beginPath();ctx.moveTo(-15,-11);ctx.quadraticCurveTo(-1,-16,14,-11);ctx.lineTo(14,11);ctx.quadraticCurveTo(-1,16,-15,11);ctx.closePath();ctx.fill();
-    ctx.strokeStyle='#5a4428';ctx.lineWidth=1;for(const x of [-8,-1,6]){ctx.beginPath();ctx.moveTo(x,-13);ctx.lineTo(x,13);ctx.stroke()}}
+    const r=13,wx=-6,wy=0,ang=t*.6,cols=['#ffd95c','#6ac6df','#ef7187','#85c27c','#ad91e1','#ffad59'];
+    for(let k=0;k<12;k++){ctx.fillStyle=cols[k%6];ctx.beginPath();ctx.moveTo(wx,wy);ctx.arc(wx,wy,r,ang+k*Math.PI/6,ang+(k+1)*Math.PI/6);ctx.closePath();ctx.fill()}
+    ctx.strokeStyle='#70452b';ctx.lineWidth=2;ctx.beginPath();ctx.arc(wx,wy,r,0,Math.PI*2);ctx.stroke();
+    ctx.fillStyle='#f5d079';ctx.beginPath();ctx.arc(wx,wy,2.5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#f6e2a5';ctx.beginPath();ctx.moveTo(wx-3,wy-r-4);ctx.lineTo(wx+3,wy-r-4);ctx.lineTo(wx,wy-r+2);ctx.fill();
+    ctx.fillStyle='#754324';ctx.fillRect(14,-2,10,10);ctx.fillStyle='#f4cf67';ctx.fillRect(18,0,2,3);
+  }else{
+    ctx.fillStyle='#875b3d';ctx.fillRect(-25,-13,50,31);
+    ctx.strokeStyle='#b88c5c';for(let k=-20;k<25;k+=10){ctx.beginPath();ctx.moveTo(k,-13);ctx.lineTo(k,18);ctx.stroke()}
+  }
+  // Fanions fixes, lampes et cordages.
+  for(const side of [-1,1]){ctx.strokeStyle='#65442b';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(side*29,14);ctx.lineTo(side*31,-31);ctx.stroke();
+    ctx.fillStyle='#ffd66a';ctx.beginPath();ctx.arc(side*31,-32,3,0,Math.PI*2);ctx.fill()}
+  ctx.strokeStyle='#8d6246';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(-31,-31);ctx.quadraticCurveTo(0,-22,31,-31);ctx.stroke();
+  for(let k=0;k<7;k++){const xx=-27+k*9,yy=-31+9*(1-(xx/31)**2);ctx.fillStyle=k%2?'#f7d066':'#ef6a66';ctx.beginPath();ctx.arc(xx,yy,2,0,Math.PI*2);ctx.fill()}
   ctx.restore();
   if(!MERCH.here&&MERCH.walk>=1){MERCH.scr={x:X*z,y:Y*z};return}
   // marchand (vu de dessus) : manteau long, chapeau ; il arrive ou repart en marchant le long de la plage
