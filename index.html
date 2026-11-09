@@ -4349,27 +4349,45 @@ function drawVillage(ox,oy){if(vStage<2)return;const X0=HOME.x+ox,Y0=HOME.y+oy;i
       ctx.fillStyle=f.col;ctx.beginPath();ctx.ellipse(-.4,0,3,4,0,0,7);ctx.fill();ctx.fillStyle='#e9bf95';ctx.beginPath();ctx.arc(.6,0,2.1,0,7);ctx.fill();ctx.fillStyle='#d8c070';ctx.beginPath();ctx.arc(.3,0,2.6,0,7);ctx.fill();ctx.restore()}}
   // étape 4 : phare
   if(vStage>=4){const [x,y]=P(VILL.light);lighthouse(ctx,x,y)}
-  // étape 5 : chantier naval et drapeaux
+  // Étape 5 : une épave reconvertie en chantier naval, sans changer son emplacement.
   if(vStage>=5){const [x,y]=P(VILL.yard);
-    ctx.fillStyle='#66563e';ctx.fillRect(x-37,y-37,75,84);
-    ctx.fillStyle='#b88750';ctx.fillRect(x-34,y-35,69,78);
-    ctx.strokeStyle='#6b4526';ctx.lineWidth=2;
-    for(let i=-30;i<=34;i+=9){ctx.beginPath();ctx.moveTo(x+i,y-35);ctx.lineTo(x+i,y+43);ctx.stroke()}
-    ctx.fillStyle='#314f68';ctx.fillRect(x-33,y-43,67,9);
-    ctx.fillStyle='#f0d198';ctx.font='800 10px Nunito,system-ui';ctx.textAlign='center';ctx.fillText('CHANTIER NAVAL',x,y-36);
-    // Poutres et gréements à proximité du chantier.
-    ctx.fillStyle='#9b6a3d';for(let i=0;i<3;i++)ctx.fillRect(x-31,y+22+i*3,16,2);
-    ctx.strokeStyle='#e5c992';ctx.lineWidth=1;ctx.beginPath();ctx.arc(x+27,y-9,6,.1,Math.PI*1.92);ctx.arc(x+27,y-9,3,.1,Math.PI*1.92);ctx.stroke();
-    ctx.fillStyle='rgba(0,0,0,.2)';ctx.fillRect(x-14,y-26,32,58);ctx.fillStyle='#a8713d';ctx.fillRect(x-16,y-28,32,58);ctx.strokeStyle='#6e4421';ctx.lineWidth=.8;for(let yy=y-28;yy<y+30;yy+=5){ctx.beginPath();ctx.moveTo(x-16,yy);ctx.lineTo(x+16,yy);ctx.stroke()}
-    ctx.strokeStyle='#5a3418';ctx.lineWidth=2.2;ctx.beginPath();ctx.moveTo(x,y-22);ctx.lineTo(x,y+24);ctx.stroke();
-    for(let i=0;i<8;i++){const yy=y-18+i*5.5,w=10*Math.sin(Math.PI*(i+1)/9);ctx.beginPath();ctx.moveTo(x-w,yy+2);ctx.quadraticCurveTo(x,yy-2,x+w,yy+2);ctx.stroke()}
-    ctx.strokeStyle='#7a5530';ctx.lineWidth=1.5;for(const sd of [-1,1]){ctx.beginPath();ctx.moveTo(x+sd*14,y-24);ctx.lineTo(x+sd*14,y+22);ctx.stroke()}
-    ctx.beginPath();ctx.moveTo(x-14,y-10);ctx.lineTo(x+14,y-10);ctx.moveTo(x-14,y+8);ctx.lineTo(x+14,y+8);ctx.stroke();
-    ctx.strokeStyle='#6b4423';ctx.lineWidth=2.4;ctx.beginPath();ctx.moveTo(x+22,y-30);ctx.lineTo(x+6,y-6);ctx.stroke();ctx.strokeStyle='rgba(60,40,20,.7)';ctx.lineWidth=.8;ctx.beginPath();ctx.moveTo(x+6,y-6);ctx.lineTo(x+6,y+2+Math.sin(t*2)*2);ctx.stroke();
-    if(foot.on){ctx.fillStyle='rgba(6,40,56,.9)';ctx.beginPath();ctx.roundRect(x-40,y-43,80,14,5);ctx.fill();ctx.fillStyle='#fff4d7';ctx.font='800 9px Nunito,system-ui';ctx.textAlign='center';ctx.fillText('CHANTIER NAVAL',x,y-33)}
-    ctx.fillStyle='#c9925a';ctx.fillRect(x+20,y+6,10,3);ctx.fillRect(x+20,y+10,10,3);ctx.fillRect(x+21,y+14,8,3);
-    const cols=['#e04a3c','#ffd75e','#2a6fb0'];VILL.flags.forEach((f,i)=>{const [fx2,fy2]=P(f);ctx.fillStyle='#5a3a20';ctx.beginPath();ctx.arc(fx2,fy2,2.2,0,7);ctx.fill();
+    ctx.drawImage(shipwreckWorkshopSprite(),x-53,y-54,106,108);
+    if(foot.on){ctx.fillStyle='rgba(6,40,56,.91)';ctx.beginPath();ctx.roundRect(x-43,y-54,86,15,5);ctx.fill();
+      ctx.fillStyle='#fff4d7';ctx.font='800 9px Nunito,system-ui';ctx.textAlign='center';ctx.fillText('CHANTIER NAVAL',x,y-44)}
+    const cols=['#e04a3c','#ffd75e','#2a6fb0'];
+    VILL.flags.forEach((f,i)=>{const [fx2,fy2]=P(f);ctx.fillStyle='#5a3a20';ctx.beginPath();ctx.arc(fx2,fy2,2.2,0,7);ctx.fill();
       ctx.fillStyle=cols[i%3];ctx.beginPath();ctx.moveTo(fx2,fy2-1.5);for(let k=0;k<=5;k++)ctx.lineTo(fx2+k*2.4,fy2-1.5+Math.sin(t*8-k)*1.2);for(let k=5;k>=0;k--)ctx.lineTo(fx2+k*2.4,fy2+2.5+Math.sin(t*8-k)*1.2);ctx.fill()})}}
+
+let SHIPWRECK_WORKSHOP_SPRITE=null;
+function shipwreckWorkshopSprite(){
+ if(SHIPWRECK_WORKSHOP_SPRITE)return SHIPWRECK_WORKSHOP_SPRITE;
+ const cv=document.createElement('canvas');cv.width=212;cv.height=216;
+ const g=cv.getContext('2d');g.scale(2,2);g.translate(53,54);
+ g.fillStyle='rgba(53,40,26,.22)';g.beginPath();g.ellipse(2,22,48,27,-.2,0,Math.PI*2);g.fill();
+ // Coque d'épave : silhouette brisée et étrave pointue.
+ g.fillStyle='#694025';g.strokeStyle='#38291f';g.lineWidth=3;
+ g.beginPath();g.moveTo(-37,-24);g.quadraticCurveTo(-45,0,-29,32);g.quadraticCurveTo(0,51,27,27);
+ g.lineTo(43,-17);g.lineTo(27,-30);g.lineTo(20,-20);g.lineTo(8,-34);g.lineTo(-3,-24);g.lineTo(-19,-34);g.closePath();g.fill();g.stroke();
+ g.fillStyle='#b77b47';g.beginPath();g.moveTo(-30,-19);g.quadraticCurveTo(-32,5,-21,25);g.quadraticCurveTo(0,37,21,21);g.lineTo(31,-14);g.lineTo(20,-18);g.lineTo(12,-9);g.lineTo(0,-20);g.lineTo(-12,-11);g.closePath();g.fill();
+ // Bordages et membrures.
+ g.strokeStyle='#5a3926';g.lineWidth=2.5;
+ for(let i=-22;i<=26;i+=9){g.beginPath();g.moveTo(i,-13);g.lineTo(i*.7,29-Math.abs(i)*.25);g.stroke()}
+ for(let j=-8;j<=23;j+=9){g.beginPath();g.moveTo(-27+j*.12,j);g.quadraticCurveTo(0,j+7,26-j*.1,j);g.stroke()}
+ g.strokeStyle='#e0b078';g.lineWidth=1.5;g.beginPath();g.moveTo(-30,-17);g.lineTo(-21,24);g.quadraticCurveTo(0,37,21,22);g.lineTo(32,-14);g.stroke();
+ // Mât cassé, voile déchirée et cordages.
+ g.strokeStyle='#543a26';g.lineWidth=5;g.beginPath();g.moveTo(0,10);g.lineTo(8,-43);g.stroke();
+ g.strokeStyle='#d2b78b';g.lineWidth=1;g.beginPath();g.moveTo(8,-43);g.lineTo(-26,-15);g.moveTo(8,-43);g.lineTo(32,-14);g.stroke();
+ g.fillStyle='#eee0b8';g.strokeStyle='#9b865f';g.lineWidth=1;
+ g.beginPath();g.moveTo(8,-39);g.lineTo(25,-25);g.lineTo(17,-20);g.lineTo(24,-13);g.lineTo(3,-16);g.closePath();g.fill();g.stroke();
+ // Atelier de charpentier, bois, outils et ancre.
+ g.fillStyle='#65442b';g.fillRect(-47,14,24,11);g.fillStyle='#c28d52';g.fillRect(-46,12,24,5);
+ g.strokeStyle='#4a3425';g.lineWidth=2;g.beginPath();g.moveTo(-41,24);g.lineTo(-41,32);g.moveTo(-28,24);g.lineTo(-28,32);g.stroke();
+ g.strokeStyle='#9ca7a6';g.lineWidth=2;g.beginPath();g.moveTo(-42,13);g.lineTo(-33,4);g.moveTo(-37,4);g.lineTo(-29,9);g.stroke();
+ g.fillStyle='#ad7540';for(let i=0;i<4;i++)g.fillRect(28,17+i*4,17-i*2,2.5);
+ g.strokeStyle='#3c5963';g.lineWidth=2.5;g.beginPath();g.moveTo(36,-37);g.lineTo(36,-23);g.arc(36,-21,5,0,Math.PI);g.moveTo(29,-25);g.lineTo(43,-25);g.stroke();
+ g.fillStyle='#f4d899';g.fillRect(-23,-43,43,11);g.fillStyle='#604124';g.font='bold 7px system-ui';g.textAlign='center';g.fillText('RÉPARATIONS',-1,-35);
+ SHIPWRECK_WORKSHOP_SPRITE=cv;return cv;
+}
 
 // ================= MARÉES =================
 // Deux cycles haute/basse par journée de jeu. À marée basse : plages plus larges, bancs de sable avec coquillages
