@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="fr">
 <head>
-<title>Prototype Mer 2.1.8</title>
+<title>Prototype Mer 2.1.9</title>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -16,7 +16,7 @@
 /* Plein écran portrait : canvas de mer + petit panneau de réglages provisoires. Monde unique (mer tropicale), thème unique assumé. */
 :root{
   --sar:env(safe-area-inset-right,0px);
-  --deep:#0f6f8f; --panel:rgba(6,40,56,.72); --text:#f2fbfd; --foam:#ffffff;
+  --deep:#087f9c; --panel:rgba(5,35,52,.82); --text:#f2fbfd; --foam:#ffffff;
   --ui:"Nunito", system-ui, sans-serif;
   color-scheme:dark;
 }
@@ -1418,7 +1418,7 @@ function drawIslandLife(is,X,Y,h){const L=(lx,ly)=>[X-h+lx,Y-h+ly];
       ctx.globalAlpha=dk*(.3+bl*.7);ctx.drawImage(glowSprite('230,255,120'),px-7,py-7,14,14)}ctx.restore()}}
 function drawSea(ox,oy,sx,sy){
   const bf=biomeF(cam.x,cam.y),b0=Math.min(3,Math.floor(bf)),b1=Math.min(3,b0+1),k=bf-b0;
-  const SEA=[[[21,144,176],[18,131,166],[15,115,151]],[[64,98,64],[54,86,54],[44,72,44]],[[79,134,163],[70,122,150],[61,110,136]],[[58,58,72],[51,51,63],[43,43,54]]];
+  const SEA=[[[19,170,189],[9,142,174],[8,102,148]],[[65,121,91],[44,103,82],[28,75,71]],[[99,155,187],[73,128,168],[47,97,148]],[[76,80,107],[58,61,91],[37,43,72]]];
   const mix=(i)=>'rgb('+[0,1,2].map(c=>Math.round(SEA[b0][i][c]*(1-k)+SEA[b1][i][c]*k)).join(',')+')';
   // Fond, reflets et eau profonde : dessinés dans une petite image (1/4) puis agrandie d'un coup
   const LK=.25,lw=Math.ceil(W*LK)+2,lh=Math.ceil(H*LK)+2;if(lowCv.width!==lw||lowCv.height!==lh){lowCv.width=lw;lowCv.height=lh}
@@ -4119,13 +4119,13 @@ function homeGroundSprite(){
  const g=cv.getContext('2d');g.translate(C,C);
  const ellipse=(x,y,rx,ry,c)=>{g.fillStyle=c;g.beginPath();g.ellipse(x,y,rx,ry,0,0,Math.PI*2);g.fill()};
  // Grand socle végétal : trois nuances assez contrastées pour être vues même sur téléphone.
- ellipse(-28,8,132,126,'rgba(31,99,55,.32)');
- ellipse(-50,-51,92,70,'rgba(46,123,61,.35)');
- ellipse(16,81,106,76,'rgba(27,106,66,.27)');
+ ellipse(-28,8,132,126,'rgba(25,116,65,.46)');
+ ellipse(-50,-51,92,70,'rgba(48,149,74,.46)');
+ ellipse(16,81,106,76,'rgba(19,127,83,.38)');
  ellipse(-34,17,105,85,'rgba(207,173,108,.23)');
  // Quartiers : sol ocre, place claire, terrasse du campement et potager.
- ellipse(-34,12,80,54,'rgba(174,124,67,.43)');
- ellipse(36,-4,67,91,'rgba(225,187,119,.65)');
+ ellipse(-34,12,80,54,'rgba(191,132,62,.58)');
+ ellipse(36,-4,67,91,'rgba(247,207,137,.80)');
  ellipse(-41,56,63,46,'rgba(163,112,64,.50)');
  ellipse(-24,-67,51,39,'rgba(99,135,57,.55)');
  // Anneaux de pierre grossiers et touffes : tous précalculés.
