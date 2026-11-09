@@ -3646,6 +3646,13 @@ const MERCH={x:HOME.x+HOME.r*.9,y:HOME.y+48,here:false,walk:1,scr:{x:-999,y:-999
 function merchPresent(){const p=(dayT%DAY)/DAY;return p>.96||p<.63}
 function updateMerchant(dt){const h=merchPresent();if(h!==MERCH.here){MERCH.here=h;MERCH.walk=0}MERCH.walk=Math.min(1,MERCH.walk+dt/3)}
 function drawMerchant(ox,oy,z){const X=MERCH.x+ox,Y=MERCH.y+oy;if(X<-80||X>W+80||Y<-80||Y>H+80){MERCH.scr={x:-999,y:-999};return}
+  // Details d'echoppe de marin : filet et petite enseigne, sans agrandir le stand.
+  ctx.save();ctx.translate(X,Y);
+  ctx.strokeStyle='rgba(103,73,46,.55)';ctx.lineWidth=.8;
+  for(let k=0;k<4;k++){ctx.beginPath();ctx.moveTo(17+k*3,-7);ctx.lineTo(26+k*2,7);ctx.stroke()}
+  ctx.fillStyle='#ead5a3';ctx.beginPath();ctx.roundRect(-19,-27,38,9,3);ctx.fill();
+  ctx.fillStyle='#62472e';ctx.font='bold 6px system-ui';ctx.textAlign='center';ctx.fillText('ROUE',0,-20);
+  ctx.restore();
   // charrette à bras avec la roue de la fortune
   const dk=darkness();ctx.save();ctx.translate(X,Y);ctx.scale(1.5,1.5);
   ctx.fillStyle='rgba(0,0,0,.2)';ctx.beginPath();ctx.ellipse(2,3,17,11,0,0,7);ctx.fill();
@@ -3784,6 +3791,16 @@ function drawMarket(ox,oy,z){const X0=MARKET.x+ox,Y0=MARKET.y+oy;if(X0<-160||X0>
    ctx.beginPath();ctx.ellipse(x,y,1.2+(i%3)*.5,.8+(i%2)*.4,ang,0,Math.PI*2);ctx.fill();
   }
   ctx.restore();
+  // Transition douce et irreguliere entre la terre du marche et la plage.
+  // Petites touffes en bordure uniquement, sans tracer une bande geometrique.
+  ctx.save();
+  for(let i=0;i<28;i++){
+   const u=(i+.5)/28,yy=Y0-72+u*144;
+   const xx=HOME.x+HOME.r*.55+ox+Math.sin(i*2.37)*5;
+   ctx.strokeStyle=i%3===0?'rgba(107,145,76,.36)':'rgba(69,134,77,.42)';
+   ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(xx,yy+2);ctx.lineTo(xx-1.8,yy-2.5);ctx.moveTo(xx,yy+2);ctx.lineTo(xx+1.4,yy-3.5);ctx.stroke();
+  }
+  ctx.restore();
   // tonneaux et caisses
   const prop=(x,y,k)=>{const X=x+ox,Y=y+oy;if(k){ctx.fillStyle='#7a4a24';ctx.beginPath();ctx.arc(X,Y,5,0,7);ctx.fill();ctx.strokeStyle='#4a2a14';ctx.lineWidth=1.2;ctx.beginPath();ctx.arc(X,Y,3.4,0,7);ctx.stroke()}
     else{ctx.fillStyle='#b98552';ctx.fillRect(X-4.5,Y-4.5,9,9);ctx.strokeStyle='#6e4421';ctx.lineWidth=1;ctx.strokeRect(X-4.5,Y-4.5,9,9);ctx.beginPath();ctx.moveTo(X-4.5,Y-4.5);ctx.lineTo(X+4.5,Y+4.5);ctx.stroke()}};
@@ -3797,12 +3814,16 @@ function drawMarket(ox,oy,z){const X0=MARKET.x+ox,Y0=MARKET.y+oy;if(X0<-160||X0>
   // Le relief et le sable existants remplacent la grande plateforme.
   // étals
   for(const st of MARKET.stalls)drawStall(st,st.x+ox,st.y+oy);
-  // guirlande de fanions au-dessus de l'entrée du ponton
-  {const ax=HOME.x+HOME.r*.6+ox,ay=HOME.y-30+oy,by=HOME.y+30+oy,cols=['#e04a3c','#ffd75e','#2a6fb0','#3f8a52','#ffffff'];
-    ctx.strokeStyle='rgba(60,40,20,.7)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(ax,ay);ctx.quadraticCurveTo(ax+10,(ay+by)/2,ax,by);ctx.stroke();
-    for(let i=1;i<10;i++){const q=i/10,x=ax+20*q*(1-q),y=ay+(by-ay)*q,sw=Math.sin(t*5+i)*1.2;ctx.fillStyle=cols[i%5];ctx.beginPath();ctx.moveTo(x,y-2.2);ctx.lineTo(x+6+sw,y);ctx.lineTo(x,y+2.2);ctx.fill()}
-    for(const yy of [ay,by]){ctx.fillStyle='#5a3a20';ctx.beginPath();ctx.arc(ax,yy,2.4,0,7);ctx.fill();
-      if(dk>.15){ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=.7*dk;ctx.drawImage(glowSprite('255,200,110'),ax-22,yy-22,44,44);ctx.restore();ctx.fillStyle='#ffd36a';ctx.beginPath();ctx.arc(ax,yy,1.6,0,7);ctx.fill()}}}
+  // Fanions suspendus entre deux poteaux reels, dans la zone du marché.
+  {const ax=HOME.x+HOME.r*.60+ox,ay=HOME.y-28+oy,by=HOME.y+28+oy;
+   const cols=['#e04a3c','#ffd75e','#2a6fb0','#3f8a52','#f4efe0'];
+   ctx.strokeStyle='#704b2e';ctx.lineWidth=2.8;
+   for(const y of [ay,by]){ctx.beginPath();ctx.moveTo(ax,y-5);ctx.lineTo(ax,y+8);ctx.stroke();
+    ctx.fillStyle='#d2aa72';ctx.beginPath();ctx.arc(ax,y-5,2.5,0,Math.PI*2);ctx.fill()}
+   ctx.strokeStyle='#7c6248';ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(ax,ay-4);ctx.quadraticCurveTo(ax+12,(ay+by)/2,ax,by-4);ctx.stroke();
+   for(let i=1;i<9;i++){const q=i/9,x=ax+24*q*(1-q),y=ay-4+(by-ay)*q,sw=Math.sin(t*4+i)*.7;
+    ctx.fillStyle=cols[i%cols.length];ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+5+sw,y+3);ctx.lineTo(x,y+5);ctx.fill()}
+  }
   // passants
   for(const f of MARKET.folk){const X=f.x+ox,Y=f.y+oy,mv=f.wait<=0,stp=mv?Math.sin(f.ph*10):0;ctx.save();ctx.translate(X,Y);ctx.rotate(f.a||0);
     ctx.fillStyle='rgba(0,0,0,.18)';ctx.beginPath();ctx.ellipse(1,1.5,4.5,3.8,0,0,7);ctx.fill();
